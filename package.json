@@ -1,0 +1,212 @@
+{
+  "name": "tab-groups-pro",
+  "displayName": "Tab Groups Pro",
+  "description": "Organize your open files into named, color-coded groups — just like Chrome tab groups.",
+  "version": "0.1.0",
+  "engines": {
+    "vscode": "^1.80.0"
+  },
+  "categories": ["Other"],
+  "keywords": ["tabs", "groups", "organizer", "files", "workspace"],
+  "activationEvents": ["onStartupFinished"],
+  "main": "./out/extension.js",
+  "icon": "images/icon.png",
+  "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "tabGroupsContainer",
+          "title": "Tab Groups",
+          "icon": "images/tab-groups-icon.svg"
+        }
+      ]
+    },
+    "views": {
+      "tabGroupsContainer": [
+        {
+          "id": "tabGroupsView",
+          "name": "Groups",
+          "icon": "images/tab-groups-icon.svg"
+        }
+      ]
+    },
+    "commands": [
+      {
+        "command": "tabGroups.createGroup",
+        "title": "New Group",
+        "icon": "$(add)",
+        "category": "Tab Groups"
+      },
+      {
+        "command": "tabGroups.renameGroup",
+        "title": "Rename Group",
+        "icon": "$(edit)",
+        "category": "Tab Groups"
+      },
+      {
+        "command": "tabGroups.deleteGroup",
+        "title": "Delete Group",
+        "icon": "$(trash)",
+        "category": "Tab Groups"
+      },
+      {
+        "command": "tabGroups.addActiveFile",
+        "title": "Add Active File to Group",
+        "icon": "$(plus)",
+        "category": "Tab Groups"
+      },
+      {
+        "command": "tabGroups.addActiveFileToGroup",
+        "title": "Add Active File Here",
+        "icon": "$(plus)",
+        "category": "Tab Groups"
+      },
+      {
+        "command": "tabGroups.openAllInGroup",
+        "title": "Open All",
+        "icon": "$(go-to-file)",
+        "category": "Tab Groups"
+      },
+      {
+        "command": "tabGroups.closeAllInGroup",
+        "title": "Close All",
+        "icon": "$(close-all)",
+        "category": "Tab Groups"
+      },
+      {
+        "command": "tabGroups.removeFileFromGroup",
+        "title": "Remove from Group",
+        "icon": "$(remove)",
+        "category": "Tab Groups"
+      },
+      {
+        "command": "tabGroups.openFile",
+        "title": "Open File",
+        "icon": "$(go-to-file)",
+        "category": "Tab Groups"
+      },
+      {
+        "command": "tabGroups.setGroupColor",
+        "title": "Change Color",
+        "icon": "$(symbol-color)",
+        "category": "Tab Groups"
+      },
+      {
+        "command": "tabGroups.addCurrentFilesToNewGroup",
+        "title": "Group All Open Tabs into New Group",
+        "icon": "$(group-by-ref-type)",
+        "category": "Tab Groups"
+      },
+      {
+        "command": "tabGroups.refresh",
+        "title": "Refresh",
+        "icon": "$(refresh)",
+        "category": "Tab Groups"
+      }
+    ],
+    "menus": {
+      "view/title": [
+        {
+          "command": "tabGroups.createGroup",
+          "when": "view == tabGroupsView",
+          "group": "navigation@1"
+        },
+        {
+          "command": "tabGroups.addCurrentFilesToNewGroup",
+          "when": "view == tabGroupsView",
+          "group": "navigation@2"
+        },
+        {
+          "command": "tabGroups.refresh",
+          "when": "view == tabGroupsView",
+          "group": "navigation@3"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "tabGroups.addActiveFileToGroup",
+          "when": "view == tabGroupsView && viewItem == group",
+          "group": "1_group@1"
+        },
+        {
+          "command": "tabGroups.openAllInGroup",
+          "when": "view == tabGroupsView && viewItem == group",
+          "group": "1_group@2"
+        },
+        {
+          "command": "tabGroups.closeAllInGroup",
+          "when": "view == tabGroupsView && viewItem == group",
+          "group": "1_group@3"
+        },
+        {
+          "command": "tabGroups.setGroupColor",
+          "when": "view == tabGroupsView && viewItem == group",
+          "group": "2_group@1"
+        },
+        {
+          "command": "tabGroups.renameGroup",
+          "when": "view == tabGroupsView && viewItem == group",
+          "group": "2_group@2"
+        },
+        {
+          "command": "tabGroups.deleteGroup",
+          "when": "view == tabGroupsView && viewItem == group",
+          "group": "3_group@1"
+        },
+        {
+          "command": "tabGroups.openFile",
+          "when": "view == tabGroupsView && viewItem == file",
+          "group": "1_file@1"
+        },
+        {
+          "command": "tabGroups.removeFileFromGroup",
+          "when": "view == tabGroupsView && viewItem == file",
+          "group": "2_file@1"
+        }
+      ],
+      "editor/title/context": [
+        {
+          "command": "tabGroups.addActiveFile",
+          "group": "tabgroups@1"
+        }
+      ],
+      "explorer/context": [
+        {
+          "command": "tabGroups.addActiveFile",
+          "group": "tabgroups@1"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "Tab Groups Pro",
+      "properties": {
+        "tabGroupsPro.groups": {
+          "type": "array",
+          "default": [],
+          "description": "Stored tab groups (managed automatically)"
+        },
+        "tabGroupsPro.showFileIcons": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show file type icons in the groups panel"
+        },
+        "tabGroupsPro.showFilePath": {
+          "type": "boolean",
+          "default": false,
+          "description": "Show full file path instead of just the filename"
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "lint": "eslint src --ext ts"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.80.0",
+    "@types/node": "^18.0.0",
+    "typescript": "^5.0.0"
+  }
+}

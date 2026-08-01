@@ -1,0 +1,35 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "npm: compile",
+      "type": "shell",
+      "command": "/tmp/node-v22.12.0-linux-x64/bin/npm run compile",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "presentation": {
+        "reveal": "silent"
+      },
+      "problemMatcher": "$tsc"
+    },
+    {
+      "label": "npm: watch",
+      "type": "shell",
+      "command": "/tmp/node-v22.12.0-linux-x64/bin/npm run watch",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "group": "build",
+      "isBackground": true,
+      "presentation": {
+        "reveal": "never"
+      },
+      "problemMatcher": "$tsc-watch"
+    }
+  ]
+}
