@@ -1,6 +1,8 @@
 .vscode/**
 src/**
 node_modules/**
+out/test/**
 *.map
+*.vsix
 tsconfig.json
 .eslintrc.json

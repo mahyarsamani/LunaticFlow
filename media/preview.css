@@ -1,0 +1,184 @@
+body {
+  padding: 0 !important;
+}
+
+#mdr-content {
+  padding: 16px 40px 64px 48px;
+  max-width: 900px;
+}
+
+/* ---------- toolbar ---------- */
+#mdr-toolbar {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  padding: 6px 12px;
+  background: var(--vscode-editorWidget-background, var(--vscode-editor-background));
+  border-bottom: 1px solid var(--vscode-widget-border, var(--vscode-panel-border, transparent));
+  font-family: var(--vscode-font-family);
+  font-size: 12px;
+}
+.mdr-count {
+  font-weight: 600;
+}
+.mdr-hint {
+  opacity: 0.65;
+  margin-left: 6px;
+}
+.mdr-spacer {
+  flex: 1;
+}
+
+/* ---------- buttons ---------- */
+.mdr-btn {
+  font: inherit;
+  font-size: 12px;
+  padding: 2px 9px;
+  border-radius: 3px;
+  border: 1px solid var(--vscode-button-border, transparent);
+  color: var(--vscode-button-secondaryForeground);
+  background: var(--vscode-button-secondaryBackground);
+  cursor: pointer;
+}
+.mdr-btn:hover:not(:disabled) {
+  background: var(--vscode-button-secondaryHoverBackground);
+}
+.mdr-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.mdr-btn.mdr-primary {
+  color: var(--vscode-button-foreground);
+  background: var(--vscode-button-background);
+}
+.mdr-btn.mdr-primary:hover {
+  background: var(--vscode-button-hoverBackground);
+}
+
+.mdr-add {
+  position: absolute;
+  left: 14px;
+  z-index: 10;
+  display: none;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  line-height: 20px;
+  font-size: 16px;
+  font-weight: 600;
+  border-radius: 50%;
+  border: none;
+  color: var(--vscode-button-foreground);
+  background: var(--vscode-button-background);
+  cursor: pointer;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+.mdr-add:hover {
+  background: var(--vscode-button-hoverBackground);
+}
+.mdr-sel {
+  position: absolute;
+  z-index: 10;
+  display: none;
+  padding: 3px 10px;
+  font-family: var(--vscode-font-family);
+  font-size: 12px;
+  border-radius: 3px;
+  border: none;
+  color: var(--vscode-button-foreground);
+  background: var(--vscode-button-background);
+  cursor: pointer;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+}
+
+/* ---------- comment threads ---------- */
+.mdr-has-comment {
+  box-shadow: -10px 0 0 -7px var(--vscode-editorInfo-foreground, #3794ff);
+}
+.mdr-slot {
+  margin: 6px 0 14px;
+  font-family: var(--vscode-font-family);
+  font-size: 13px;
+  line-height: 1.45;
+}
+.mdr-thread {
+  border: 1px solid var(--vscode-widget-border, var(--vscode-panel-border, rgba(128, 128, 128, 0.35)));
+  border-left: 3px solid var(--vscode-editorInfo-foreground, #3794ff);
+  border-radius: 4px;
+  background: var(--vscode-editorWidget-background, rgba(128, 128, 128, 0.08));
+  margin-bottom: 6px;
+  overflow: hidden;
+}
+.mdr-thread-head {
+  padding: 4px 10px;
+  font-size: 11px;
+  opacity: 0.8;
+  border-bottom: 1px solid var(--vscode-widget-border, rgba(128, 128, 128, 0.2));
+}
+.mdr-loc {
+  font-family: var(--vscode-editor-font-family);
+  color: var(--vscode-textLink-foreground);
+  text-decoration: none;
+}
+.mdr-loc:hover {
+  text-decoration: underline;
+}
+.mdr-comment,
+.mdr-composer {
+  padding: 8px 10px;
+}
+.mdr-comment + .mdr-comment,
+.mdr-comment + .mdr-composer {
+  border-top: 1px solid var(--vscode-widget-border, rgba(128, 128, 128, 0.2));
+}
+.mdr-text {
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.mdr-quote {
+  margin: 0 0 6px;
+  padding-left: 8px;
+  border-left: 2px solid var(--vscode-textBlockQuote-border, rgba(128, 128, 128, 0.5));
+  opacity: 0.75;
+  font-style: italic;
+}
+.mdr-actions {
+  display: flex;
+  gap: 6px;
+  margin-top: 6px;
+}
+.mdr-comment {
+  position: relative;
+}
+.mdr-comment .mdr-actions {
+  position: absolute;
+  top: 4px;
+  right: 6px;
+  margin: 0;
+  opacity: 0;
+  transition: opacity 0.1s;
+}
+.mdr-comment:hover .mdr-actions,
+.mdr-comment:focus-within .mdr-actions {
+  opacity: 1;
+}
+.mdr-composer textarea {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 60px;
+  resize: vertical;
+  padding: 6px 8px;
+  font: inherit;
+  color: var(--vscode-input-foreground);
+  background: var(--vscode-input-background);
+  border: 1px solid var(--vscode-input-border, transparent);
+  border-radius: 2px;
+}
+.mdr-composer textarea:focus {
+  outline: 1px solid var(--vscode-focusBorder);
+  outline-offset: -1px;
+}

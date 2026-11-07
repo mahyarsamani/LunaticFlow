@@ -1,14 +1,16 @@
 {
   "name": "tab-groups-pro",
   "displayName": "Tab Groups Pro",
-  "description": "Organize your open files into named, color-coded groups — just like Chrome tab groups.",
-  "version": "0.1.0",
+  "description": "Organize your open files into named, color-coded groups like Chrome tab groups, and leave review comments on Markdown previews.",
+  "version": "0.2.0",
+  "publisher": "mahyarsamani",
+  "license": "MIT",
   "engines": {
     "vscode": "^1.80.0"
   },
   "categories": ["Other"],
-  "keywords": ["tabs", "groups", "organizer", "files", "workspace"],
-  "activationEvents": ["onStartupFinished"],
+  "keywords": ["tabs", "groups", "organizer", "files", "workspace", "markdown", "review", "comments"],
+  "activationEvents": ["onStartupFinished", "onWebviewPanel:mdReview.preview"],
   "main": "./out/extension.js",
   "icon": "images/icon.png",
   "contributes": {
@@ -27,181 +29,183 @@
           "id": "tabGroupsView",
           "name": "Groups",
           "icon": "images/tab-groups-icon.svg"
+        },
+        {
+          "id": "reviewCommentsView",
+          "name": "Review Comments",
+          "icon": "$(comment-discussion)"
         }
       ]
     },
-    "commands": [
+    "viewsWelcome": [
       {
-        "command": "tabGroups.createGroup",
-        "title": "New Group",
-        "icon": "$(add)",
-        "category": "Tab Groups"
+        "view": "tabGroupsView",
+        "contents": "No tab groups yet.\n[New Group](command:tabGroups.createGroup)\n[Group All Open Tabs](command:tabGroups.addCurrentFilesToNewGroup)"
       },
       {
-        "command": "tabGroups.renameGroup",
-        "title": "Rename Group",
-        "icon": "$(edit)",
-        "category": "Tab Groups"
-      },
-      {
-        "command": "tabGroups.deleteGroup",
-        "title": "Delete Group",
-        "icon": "$(trash)",
-        "category": "Tab Groups"
-      },
-      {
-        "command": "tabGroups.addActiveFile",
-        "title": "Add Active File to Group",
-        "icon": "$(plus)",
-        "category": "Tab Groups"
-      },
-      {
-        "command": "tabGroups.addActiveFileToGroup",
-        "title": "Add Active File Here",
-        "icon": "$(plus)",
-        "category": "Tab Groups"
-      },
-      {
-        "command": "tabGroups.openAllInGroup",
-        "title": "Open All",
-        "icon": "$(go-to-file)",
-        "category": "Tab Groups"
-      },
-      {
-        "command": "tabGroups.closeAllInGroup",
-        "title": "Close All",
-        "icon": "$(close-all)",
-        "category": "Tab Groups"
-      },
-      {
-        "command": "tabGroups.removeFileFromGroup",
-        "title": "Remove from Group",
-        "icon": "$(remove)",
-        "category": "Tab Groups"
-      },
-      {
-        "command": "tabGroups.openFile",
-        "title": "Open File",
-        "icon": "$(go-to-file)",
-        "category": "Tab Groups"
-      },
-      {
-        "command": "tabGroups.setGroupColor",
-        "title": "Change Color",
-        "icon": "$(symbol-color)",
-        "category": "Tab Groups"
-      },
-      {
-        "command": "tabGroups.addCurrentFilesToNewGroup",
-        "title": "Group All Open Tabs into New Group",
-        "icon": "$(group-by-ref-type)",
-        "category": "Tab Groups"
-      },
-      {
-        "command": "tabGroups.refresh",
-        "title": "Refresh",
-        "icon": "$(refresh)",
-        "category": "Tab Groups"
+        "view": "reviewCommentsView",
+        "contents": "No review comments yet. Open a Markdown file and start a review.\n[Open Review Preview](command:mdReview.openPreview)"
       }
     ],
+    "commands": [
+      { "command": "tabGroups.createGroup", "title": "New Group", "icon": "$(add)", "category": "Tab Groups" },
+      { "command": "tabGroups.renameGroup", "title": "Rename Group", "icon": "$(edit)", "category": "Tab Groups" },
+      { "command": "tabGroups.deleteGroup", "title": "Delete Group", "icon": "$(trash)", "category": "Tab Groups" },
+      { "command": "tabGroups.addActiveFile", "title": "Add to Tab Group…", "icon": "$(plus)", "category": "Tab Groups" },
+      { "command": "tabGroups.addActiveFileToGroup", "title": "Add Active File Here", "icon": "$(plus)", "category": "Tab Groups" },
+      { "command": "tabGroups.addOpenTabsToGroup", "title": "Add All Open Tabs Here", "icon": "$(files)", "category": "Tab Groups" },
+      { "command": "tabGroups.openAllInGroup", "title": "Open All", "icon": "$(go-to-file)", "category": "Tab Groups" },
+      { "command": "tabGroups.closeAllInGroup", "title": "Close All", "icon": "$(close-all)", "category": "Tab Groups" },
+      { "command": "tabGroups.switchToGroup", "title": "Switch to Group", "icon": "$(arrow-swap)", "category": "Tab Groups" },
+      { "command": "tabGroups.switchToGroupPick", "title": "Switch to Group…", "category": "Tab Groups" },
+      { "command": "tabGroups.removeFileFromGroup", "title": "Remove from Group", "icon": "$(close)", "category": "Tab Groups" },
+      { "command": "tabGroups.openFile", "title": "Open File", "icon": "$(go-to-file)", "category": "Tab Groups" },
+      { "command": "tabGroups.setGroupColor", "title": "Change Color", "icon": "$(symbol-color)", "category": "Tab Groups" },
+      { "command": "tabGroups.addCurrentFilesToNewGroup", "title": "Group All Open Tabs into New Group", "icon": "$(group-by-ref-type)", "category": "Tab Groups" },
+      { "command": "tabGroups.copyGroupComments", "title": "Copy Review Comments for Group", "icon": "$(comment-discussion)", "category": "Tab Groups" },
+      { "command": "tabGroups.refresh", "title": "Refresh", "icon": "$(refresh)", "category": "Tab Groups" },
+
+      { "command": "mdReview.openPreview", "title": "Open Review Preview", "icon": "$(comment-discussion)", "category": "Markdown Review" },
+      { "command": "mdReview.copyComments", "title": "Copy Comments (Current File)", "icon": "$(copy)", "category": "Markdown Review" },
+      { "command": "mdReview.copyAllComments", "title": "Copy Comments (All Files)", "icon": "$(copy)", "category": "Markdown Review" },
+      { "command": "mdReview.exportComments", "title": "Export Comments to New Document", "icon": "$(export)", "category": "Markdown Review" },
+      { "command": "mdReview.clearComments", "title": "Clear Comments (Current File)", "icon": "$(clear-all)", "category": "Markdown Review" },
+      { "command": "mdReview.clearAllComments", "title": "Clear Comments (All Files)", "icon": "$(clear-all)", "category": "Markdown Review" },
+      { "command": "mdReview.editComment", "title": "Edit Comment", "icon": "$(edit)", "category": "Markdown Review" },
+      { "command": "mdReview.deleteComment", "title": "Delete Comment", "icon": "$(trash)", "category": "Markdown Review" },
+      { "command": "mdReview.revealComment", "title": "Go to Comment", "category": "Markdown Review" }
+    ],
     "menus": {
+      "commandPalette": [
+        { "command": "tabGroups.renameGroup", "when": "false" },
+        { "command": "tabGroups.deleteGroup", "when": "false" },
+        { "command": "tabGroups.addActiveFileToGroup", "when": "false" },
+        { "command": "tabGroups.addOpenTabsToGroup", "when": "false" },
+        { "command": "tabGroups.openAllInGroup", "when": "false" },
+        { "command": "tabGroups.closeAllInGroup", "when": "false" },
+        { "command": "tabGroups.switchToGroup", "when": "false" },
+        { "command": "tabGroups.removeFileFromGroup", "when": "false" },
+        { "command": "tabGroups.openFile", "when": "false" },
+        { "command": "tabGroups.setGroupColor", "when": "false" },
+        { "command": "tabGroups.copyGroupComments", "when": "false" },
+        { "command": "mdReview.editComment", "when": "false" },
+        { "command": "mdReview.deleteComment", "when": "false" },
+        { "command": "mdReview.revealComment", "when": "false" }
+      ],
       "view/title": [
-        {
-          "command": "tabGroups.createGroup",
-          "when": "view == tabGroupsView",
-          "group": "navigation@1"
-        },
-        {
-          "command": "tabGroups.addCurrentFilesToNewGroup",
-          "when": "view == tabGroupsView",
-          "group": "navigation@2"
-        },
-        {
-          "command": "tabGroups.refresh",
-          "when": "view == tabGroupsView",
-          "group": "navigation@3"
-        }
+        { "command": "tabGroups.createGroup", "when": "view == tabGroupsView", "group": "navigation@1" },
+        { "command": "tabGroups.addCurrentFilesToNewGroup", "when": "view == tabGroupsView", "group": "navigation@2" },
+        { "command": "tabGroups.refresh", "when": "view == tabGroupsView", "group": "navigation@3" },
+        { "command": "mdReview.copyAllComments", "when": "view == reviewCommentsView", "group": "navigation@1" },
+        { "command": "mdReview.exportComments", "when": "view == reviewCommentsView", "group": "navigation@2" },
+        { "command": "mdReview.clearAllComments", "when": "view == reviewCommentsView", "group": "navigation@3" }
       ],
       "view/item/context": [
-        {
-          "command": "tabGroups.addActiveFileToGroup",
-          "when": "view == tabGroupsView && viewItem == group",
-          "group": "1_group@1"
-        },
-        {
-          "command": "tabGroups.openAllInGroup",
-          "when": "view == tabGroupsView && viewItem == group",
-          "group": "1_group@2"
-        },
-        {
-          "command": "tabGroups.closeAllInGroup",
-          "when": "view == tabGroupsView && viewItem == group",
-          "group": "1_group@3"
-        },
-        {
-          "command": "tabGroups.setGroupColor",
-          "when": "view == tabGroupsView && viewItem == group",
-          "group": "2_group@1"
-        },
-        {
-          "command": "tabGroups.renameGroup",
-          "when": "view == tabGroupsView && viewItem == group",
-          "group": "2_group@2"
-        },
-        {
-          "command": "tabGroups.deleteGroup",
-          "when": "view == tabGroupsView && viewItem == group",
-          "group": "3_group@1"
-        },
-        {
-          "command": "tabGroups.openFile",
-          "when": "view == tabGroupsView && viewItem == file",
-          "group": "1_file@1"
-        },
-        {
-          "command": "tabGroups.removeFileFromGroup",
-          "when": "view == tabGroupsView && viewItem == file",
-          "group": "2_file@1"
-        }
+        { "command": "tabGroups.switchToGroup", "when": "view == tabGroupsView && viewItem == group", "group": "inline@1" },
+        { "command": "tabGroups.openAllInGroup", "when": "view == tabGroupsView && viewItem == group", "group": "inline@2" },
+        { "command": "tabGroups.closeAllInGroup", "when": "view == tabGroupsView && viewItem == group", "group": "inline@3" },
+        { "command": "tabGroups.switchToGroup", "when": "view == tabGroupsView && viewItem == group", "group": "1_group@0" },
+        { "command": "tabGroups.openAllInGroup", "when": "view == tabGroupsView && viewItem == group", "group": "1_group@1" },
+        { "command": "tabGroups.closeAllInGroup", "when": "view == tabGroupsView && viewItem == group", "group": "1_group@2" },
+        { "command": "tabGroups.addActiveFileToGroup", "when": "view == tabGroupsView && viewItem == group", "group": "2_add@1" },
+        { "command": "tabGroups.addOpenTabsToGroup", "when": "view == tabGroupsView && viewItem == group", "group": "2_add@2" },
+        { "command": "tabGroups.copyGroupComments", "when": "view == tabGroupsView && viewItem == group", "group": "3_review@1" },
+        { "command": "tabGroups.setGroupColor", "when": "view == tabGroupsView && viewItem == group", "group": "4_edit@1" },
+        { "command": "tabGroups.renameGroup", "when": "view == tabGroupsView && viewItem == group", "group": "4_edit@2" },
+        { "command": "tabGroups.deleteGroup", "when": "view == tabGroupsView && viewItem == group", "group": "5_delete@1" },
+
+        { "command": "tabGroups.removeFileFromGroup", "when": "view == tabGroupsView && viewItem =~ /^file/", "group": "inline@1" },
+        { "command": "tabGroups.openFile", "when": "view == tabGroupsView && viewItem =~ /^file/", "group": "1_file@1" },
+        { "command": "mdReview.openPreview", "when": "view == tabGroupsView && viewItem == file-md", "group": "1_file@2" },
+        { "command": "tabGroups.removeFileFromGroup", "when": "view == tabGroupsView && viewItem =~ /^file/", "group": "2_file@1" },
+
+        { "command": "mdReview.openPreview", "when": "view == reviewCommentsView && viewItem == reviewFile", "group": "inline@1" },
+        { "command": "mdReview.copyComments", "when": "view == reviewCommentsView && viewItem == reviewFile", "group": "inline@2" },
+        { "command": "mdReview.openPreview", "when": "view == reviewCommentsView && viewItem == reviewFile", "group": "1_file@1" },
+        { "command": "mdReview.copyComments", "when": "view == reviewCommentsView && viewItem == reviewFile", "group": "1_file@2" },
+        { "command": "mdReview.clearComments", "when": "view == reviewCommentsView && viewItem == reviewFile", "group": "2_file@1" },
+        { "command": "mdReview.editComment", "when": "view == reviewCommentsView && viewItem == reviewComment", "group": "inline@1" },
+        { "command": "mdReview.deleteComment", "when": "view == reviewCommentsView && viewItem == reviewComment", "group": "inline@2" },
+        { "command": "mdReview.editComment", "when": "view == reviewCommentsView && viewItem == reviewComment", "group": "1_comment@1" },
+        { "command": "mdReview.deleteComment", "when": "view == reviewCommentsView && viewItem == reviewComment", "group": "1_comment@2" }
+      ],
+      "editor/title": [
+        { "command": "mdReview.openPreview", "when": "editorLangId == markdown", "group": "navigation" }
       ],
       "editor/title/context": [
-        {
-          "command": "tabGroups.addActiveFile",
-          "group": "tabgroups@1"
-        }
+        { "command": "tabGroups.addActiveFile", "group": "tabgroups@1" }
       ],
       "explorer/context": [
-        {
-          "command": "tabGroups.addActiveFile",
-          "group": "tabgroups@1"
-        }
+        { "command": "tabGroups.addActiveFile", "when": "!explorerResourceIsFolder", "group": "tabgroups@1" },
+        { "command": "mdReview.openPreview", "when": "resourceLangId == markdown", "group": "navigation" }
       ]
     },
-    "configuration": {
-      "title": "Tab Groups Pro",
-      "properties": {
-        "tabGroupsPro.groups": {
-          "type": "array",
-          "default": [],
-          "description": "Stored tab groups (managed automatically)"
-        },
-        "tabGroupsPro.showFileIcons": {
-          "type": "boolean",
-          "default": true,
-          "description": "Show file type icons in the groups panel"
-        },
-        "tabGroupsPro.showFilePath": {
-          "type": "boolean",
-          "default": false,
-          "description": "Show full file path instead of just the filename"
+    "keybindings": [
+      {
+        "command": "mdReview.openPreview",
+        "key": "ctrl+alt+r",
+        "mac": "cmd+alt+r",
+        "when": "editorLangId == markdown"
+      },
+      {
+        "command": "tabGroups.switchToGroupPick",
+        "key": "ctrl+alt+g",
+        "mac": "cmd+alt+g"
+      }
+    ],
+    "configuration": [
+      {
+        "title": "Tab Groups",
+        "properties": {
+          "tabGroupsPro.showFileIcons": {
+            "type": "boolean",
+            "default": true,
+            "description": "Show file type icons in the groups panel."
+          },
+          "tabGroupsPro.showFilePath": {
+            "type": "boolean",
+            "default": false,
+            "description": "Show the workspace-relative path instead of just the file name."
+          },
+          "tabGroupsPro.switchClosesOtherTabs": {
+            "type": "boolean",
+            "default": true,
+            "description": "When switching to a group, close open tabs that are not in it. Tabs with unsaved changes and pinned tabs are always kept."
+          },
+          "tabGroupsPro.showStatusBar": {
+            "type": "boolean",
+            "default": true,
+            "description": "Show the current tab group in the status bar."
+          }
+        }
+      },
+      {
+        "title": "Markdown Review",
+        "properties": {
+          "mdReview.separator": {
+            "type": "string",
+            "default": "; ",
+            "description": "Text placed between several comments on the same line."
+          },
+          "mdReview.includeQuote": {
+            "type": "boolean",
+            "default": false,
+            "description": "Put the selected text in quotes before the comment when exporting (only for comments made on a text selection)."
+          },
+          "mdReview.absolutePaths": {
+            "type": "boolean",
+            "default": false,
+            "description": "Export absolute file paths instead of workspace-relative ones."
+          }
         }
       }
-    }
+    ]
   },
   "scripts": {
     "vscode:prepublish": "npm run compile",
     "compile": "tsc -p ./",
     "watch": "tsc -watch -p ./",
+    "test": "npm run compile && node out/test/format.test.js",
     "lint": "eslint src --ext ts"
   },
   "devDependencies": {
