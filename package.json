@@ -2,7 +2,7 @@
   "name": "lunaticflow",
   "displayName": "LunaticFlow",
   "description": "Work with coding agents in sprints: plan them as a graph, review each sprint in the changed files (approve, reject, comment on lines), and see what changed since your review. Also: tab groups and Markdown review comments.",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "publisher": "mahyarsamani",
   "license": "MIT",
   "repository": {
@@ -68,6 +68,7 @@
       { "command": "lunaticflow.initRepo", "title": "Set Up in a Repository", "category": "LunaticFlow" },
       { "command": "lunaticflow.installCli", "title": "Install the lf CLI for Agents", "category": "LunaticFlow" },
       { "command": "lunaticflow.checkForUpdates", "title": "Check for Updates", "category": "LunaticFlow" },
+      { "command": "lunaticflow.openPlayground", "title": "Open the Agent Playground", "category": "LunaticFlow" },
       { "command": "lunaticflow.approveHunk", "title": "Approve Change", "icon": "$(check)", "category": "LunaticFlow" },
       { "command": "lunaticflow.rejectHunk", "title": "Reject Change", "icon": "$(close)", "category": "LunaticFlow" },
       { "command": "lunaticflow.clearHunk", "title": "Undo Decision", "icon": "$(discard)", "category": "LunaticFlow" },
@@ -162,6 +163,7 @@
         { "command": "lunaticflow.initRepo", "when": "view == lunaticflowView", "group": "2_setup@1" },
         { "command": "lunaticflow.installCli", "when": "view == lunaticflowView", "group": "2_setup@2" },
         { "command": "lunaticflow.checkForUpdates", "when": "view == lunaticflowView", "group": "2_setup@3" },
+        { "command": "lunaticflow.openPlayground", "when": "view == lunaticflowView", "group": "2_setup@4" },
         { "command": "tabGroups.createGroup", "when": "view == tabGroupsView", "group": "navigation@1" },
         { "command": "tabGroups.addCurrentFilesToNewGroup", "when": "view == tabGroupsView", "group": "navigation@2" },
         { "command": "tabGroups.refresh", "when": "view == tabGroupsView", "group": "navigation@3" },
@@ -258,11 +260,18 @@
       {
         "title": "LunaticFlow",
         "properties": {
+          "lunaticflow.agentPlayground": {
+            "type": "string",
+            "default": "",
+            "scope": "machine-overridable",
+            "markdownDescription": "Base directory where agents make their own clones and write their files, one subdirectory per work package (for example `/scr/msamani/agents`, so `lf clone dx100` makes `/scr/msamani/agents/dx100/<repo>` on branch `agent/dx100`). Set it in your user or remote settings, and override it per workspace. `~`, `${userHome}` and `${env:NAME}` are expanded. Plans in the playground appear in the Flow view, and the `lf` CLI reads it from `~/.config/lunaticflow/config.json`, which LunaticFlow keeps up to date."
+          },
           "lunaticflow.agentRoots": {
             "type": "array",
             "items": { "type": "string" },
-            "default": ["/scr/msamani/agents"],
-            "description": "Folders that hold agents' clones (one per work package). Repositories with a .lunaticflow plan under them appear in the Flow view next to the workspace's own. Missing folders are ignored; ~ means your home folder."
+            "default": [],
+            "scope": "machine-overridable",
+            "description": "More folders to search for agents' clones with a .lunaticflow plan, besides the agent playground. Missing folders are ignored."
           },
           "lunaticflow.scanDepth": {
             "type": "number",

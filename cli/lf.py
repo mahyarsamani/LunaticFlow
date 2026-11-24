@@ -491,6 +491,96 @@ def cmd_status(a, root):
         print("ready: " + ", ".join(s["id"] for s in r))
 
 
+# ── the agent playground ─────────────────────────────────────────────────────
+
+def config_file():
+    base = os.environ.get("XDG_CONFIG_HOME") or os.path.join(os.path.expanduser("~"), ".config")
+    return os.path.join(base, "lunaticflow", "config.json")
+
+
+def expand(p):
+    p = re.sub(r"\$\{env:([A-Za-z_][A-Za-z0-9_]*)\}", lambda m: os.environ.get(m.group(1), ""), p.strip())
+    return os.path.expanduser(p.replace("${userHome}", os.path.expanduser("~")))
+
+
+def playground(where=None, override=None):
+    """The base directory for agents' clones: --playground, $LUNATICFLOW_PLAYGROUND, then the value
+    the LunaticFlow extension mirrors to ~/.config/lunaticflow/config.json (the closest workspace first)."""
+    if override:
+        return expand(override)
+    if os.environ.get("LUNATICFLOW_PLAYGROUND"):
+        return expand(os.environ["LUNATICFLOW_PLAYGROUND"])
+    cfg = read_json(config_file(), {}) or {}
+    here = os.path.realpath(where or os.getcwd())
+    best = None
+    for ws, value in (cfg.get("workspaces") or {}).items():
+        ws_real = os.path.realpath(ws)
+        if (here == ws_real or here.startswith(ws_real + os.sep)) and (best is None or len(ws_real) > len(best[0])):
+            best = (ws_real, value)
+    if best:
+        return expand(best[1])
+    if cfg.get("agentPlayground"):
+        return expand(cfg["agentPlayground"])
+    return None
+
+
+def cmd_playground(a, root):
+    p = playground(root, a.playground)
+    if not p:
+        die("no agent playground is set: set lunaticflow.agentPlayground in VS Code, "
+            "or LUNATICFLOW_PLAYGROUND in the environment")
+    print(p)
+
+
+def cmd_clone(a, root):
+    """Clone this repository into <playground>/<wp>/<name> on branch agent/<wp>, submodules from the local copies."""
+    base = playground(root, a.playground)
+    if not base:
+        die("no agent playground is set: set lunaticflow.agentPlayground in VS Code, "
+            "or pass --playground")
+    if not re.fullmatch(r"[\w.-]+", a.wp):
+        die("a work package name may use letters, digits, '.', '_' and '-' only")
+    name = a.name or os.path.basename(root)
+    dest = os.path.join(base, a.wp, name)
+    if os.path.exists(dest):
+        die(f"{dest} exists already")
+    os.makedirs(os.path.dirname(dest), exist_ok=True)
+    branch = f"agent/{a.wp}"
+    p = subprocess.run(["git", "clone", "-q", root, dest], capture_output=True, text=True)
+    if p.returncode != 0:
+        die(f"git clone failed: {p.stderr.strip()}")
+    # Pushes go where the original pushes; the original stays reachable as `local`.
+    upstream = git(root, "remote", "get-url", "origin", check=False).strip()
+    if upstream:
+        git(dest, "remote", "set-url", "origin", upstream)
+    git(dest, "remote", "add", "local", root)
+    start = a.base or git(root, "rev-parse", "HEAD").strip()
+    git(dest, "checkout", "-q", "-b", branch, start)
+    if a.submodules:
+        status = git(root, "submodule", "status", check=False)
+        for line in status.splitlines():
+            parts = line[1:].split()
+            if len(parts) < 2:
+                continue
+            sub = parts[1]
+            src = os.path.join(root, sub)
+            if not os.path.isdir(os.path.join(src, ".git")) and not os.path.isfile(os.path.join(src, ".git")):
+                continue
+            key = git(dest, "config", "-f", ".gitmodules", "--get-regexp", r"submodule\..*\.path", check=False)
+            mod = next((k.split()[0][len("submodule."):-len(".path")] for k in key.splitlines() if k.split()[1] == sub), None)
+            if not mod:
+                continue
+            git(dest, "config", f"submodule.{mod}.url", src)
+            git(dest, "-c", "protocol.file.allow=always", "submodule", "update", "--init", "-q", "--", sub)
+            sub_up = git(src, "remote", "get-url", "origin", check=False).strip()
+            if sub_up:
+                git(os.path.join(dest, sub), "remote", "set-url", "origin", sub_up)
+            git(os.path.join(dest, sub), "remote", "add", "local", src, check=False)
+    ensure_init(dest)
+    print(dest)
+    print(f"branch {branch} at {start[:10]}; origin is {upstream or '(none)'}, the original is remote `local`")
+
+
 # ── Claude Code hooks ────────────────────────────────────────────────────────
 
 def _hook_root(payload):
@@ -619,6 +709,15 @@ def main(argv=None):
 
     sub.add_parser("revert-rejected", help="undo the rejected hunks of the last review").add_argument("sprint")
 
+    sub.add_parser("playground", help="print the agent playground directory").add_argument("--playground")
+
+    p = sub.add_parser("clone", help="clone this repository into <playground>/<wp>/ on branch agent/<wp>")
+    p.add_argument("wp", help="work package name, e.g. dx100")
+    p.add_argument("--name", help="directory name of the clone (default: this repository's)")
+    p.add_argument("--base", help="commit or branch to start agent/<wp> from (default: HEAD)")
+    p.add_argument("--submodules", action="store_true", help="also check out submodules, from the local copies")
+    p.add_argument("--playground", help="override the playground directory")
+
     p = sub.add_parser("hook", help="Claude Code hook entry point (reads the hook JSON on stdin)")
     p.add_argument("event", choices=["stop", "session-start", "session-end", "subagent-start", "subagent-stop",
                                      "post-bash"])
@@ -635,11 +734,14 @@ def main(argv=None):
             print(f"lf hook: {e}", file=sys.stderr)
         return
     root = repo_root(a.dir)
+    if a.cmd == "playground":
+        cmd_playground(a, root or a.dir or os.getcwd())
+        return
     if root is None:
         die("not inside a git repository")
     {"init": cmd_init, "plan": cmd_plan, "next": cmd_next, "status": cmd_status, "start": cmd_start,
      "submit": cmd_submit, "await": cmd_await, "show": cmd_show, "reply": cmd_reply,
-     "revert-rejected": cmd_revert_rejected}[a.cmd](a, root)
+     "revert-rejected": cmd_revert_rejected, "playground": cmd_playground, "clone": cmd_clone}[a.cmd](a, root)
 
 
 if __name__ == "__main__":

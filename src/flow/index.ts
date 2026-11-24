@@ -9,8 +9,10 @@ import { ReviewController, openClaudeSession } from './review';
 import { FlowNode, FlowTreeProvider, nodeArg } from './view';
 import { PlanGraphPanel, downstream } from './graph';
 import { validatePlan } from './model';
+import { playgroundFor, syncPlaygroundConfig } from './playground';
 
 export function activateFlow(context: vscode.ExtensionContext) {
+    syncPlaygroundConfig();
     const store = new FlowStore();
     const review = new ReviewController(context, store);
     const tree = new FlowTreeProvider(store, review);
@@ -60,8 +62,27 @@ export function activateFlow(context: vscode.ExtensionContext) {
     context.subscriptions.push(
         store, review, view, status,
         store.onDidChange(update),
-        vscode.workspace.onDidChangeWorkspaceFolders(() => store.refresh(true)),
-        vscode.workspace.onDidChangeConfiguration(e => { if (e.affectsConfiguration('lunaticflow')) { store.refresh(true); } }),
+        vscode.workspace.onDidChangeWorkspaceFolders(() => { syncPlaygroundConfig(); store.refresh(true); }),
+        vscode.workspace.onDidChangeConfiguration(e => {
+            if (e.affectsConfiguration('lunaticflow')) { syncPlaygroundConfig(); store.refresh(true); }
+        }),
+
+        vscode.commands.registerCommand('lunaticflow.openPlayground', async () => {
+            const p = playgroundFor(vscode.workspace.workspaceFolders?.[0]);
+            if (!p) {
+                const pick = await vscode.window.showInformationMessage(
+                    'No agent playground is set. Agents make their clones there, one folder per work package.', 'Set It');
+                if (pick) { await vscode.commands.executeCommand('workbench.action.openSettings', 'lunaticflow.agentPlayground'); }
+                return;
+            }
+            fs.mkdirSync(p, { recursive: true });
+            const pick = await vscode.window.showInformationMessage(`Agent playground: ${p}`, 'Open in New Window', 'Copy Path');
+            if (pick === 'Open in New Window') {
+                await vscode.commands.executeCommand('vscode.openFolder', vscode.Uri.file(p), { forceNewWindow: true });
+            } else if (pick === 'Copy Path') {
+                await vscode.env.clipboard.writeText(p);
+            }
+        }),
 
         vscode.commands.registerCommand('lunaticflow.node.approveHunk', viaNode('lunaticflow.approveHunk')),
         vscode.commands.registerCommand('lunaticflow.node.rejectHunk', viaNode('lunaticflow.rejectHunk')),

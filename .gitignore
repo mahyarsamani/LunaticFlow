@@ -3,3 +3,4 @@ out/
 *.log
 # Release builds come from GitHub Actions (.github/workflows/release.yml).
 *.vsix
+__pycache__/

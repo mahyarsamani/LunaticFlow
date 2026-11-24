@@ -27,7 +27,7 @@ LunaticFlow also keeps the two features it grew out of: tab groups and Markdown 
 
 ### The Flow view
 
-- **Repositories** with a `.lunaticflow/` plan, from the workspace (two folder levels deep, so `projects/sift` counts) and from `lunaticflow.agentRoots` (agents' clones; shown with a robot icon).
+- **Repositories** with a `.lunaticflow/` plan, from the workspace (two folder levels deep, so `projects/sift` counts) and from the agent playground (`lunaticflow.agentPlayground`, where agents clone the repository; shown with a robot icon).
 - **Sprints** in dependency order, with their state: ready, waiting on dependencies, agent working, **waiting for you**, agent revising, approved.
 - Under a sprint in review: its **files and hunks**, each with inline ✓ ✗ 💬, and its **threads**.
 - **Agents:** Claude Code sessions and their subagents, from the plugin's hooks; click one to open its session.
@@ -116,7 +116,8 @@ All commands are available via `Ctrl+Shift+P` → search "Tab Groups" or "Markdo
 
 | Setting | Default | |
 |---|---|---|
-| `lunaticflow.agentRoots` | `["/scr/msamani/agents"]` | Folders holding agents' clones; their plans appear in the Flow view |
+| `lunaticflow.agentPlayground` | none | Where agents make their clones and write files, one folder per work package (e.g. `/scr/msamani/agents`); user, remote or workspace level; `lf clone` and `lf playground` use it |
+| `lunaticflow.agentRoots` | `[]` | More folders to search for agents' clones, besides the playground |
 | `lunaticflow.scanDepth` | `2` | Folder levels searched for `.lunaticflow/` plans |
 | `lunaticflow.notify` | `true` | Notify when a sprint is handed over for review |
 | `lunaticflow.reviewerName` | `"You"` | Your name on review comments |

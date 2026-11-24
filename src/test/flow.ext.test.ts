@@ -54,16 +54,35 @@ async function main() {
     // The extension starts and finds the plan.
     vs.workspace.workspaceFolders = [{ uri: vs.Uri.file(repo) }];
     vs.mock.setConfig('lunaticflow.agentRoots', []);
+    // The agent playground: the extension mirrors it for the CLI, and an agent clones into it.
+    const cfgHome = fs.mkdtempSync(path.join(os.tmpdir(), 'lf-cfg-'));
+    const play = fs.mkdtempSync(path.join(os.tmpdir(), 'lf-play-'));
+    process.env.XDG_CONFIG_HOME = cfgHome;
+    vs.mock.setConfig('lunaticflow.agentPlayground', play);
     vs.mock.setConfig('diffEditor.codeLens', true);
     const context: any = {
         subscriptions: [], extensionPath: extRoot, extensionUri: vs.Uri.file(extRoot),
         globalState: { get: () => true, update: async () => {} },
     };
     activateFlow(context);
+    const mirrored = JSON.parse(fs.readFileSync(path.join(cfgHome, 'lunaticflow', 'config.json'), 'utf8'));
+    assert.strictEqual(mirrored.agentPlayground, play);
+    assert.strictEqual(execFileSync('python3', [LF, 'playground'], { cwd: repo, encoding: 'utf8', env: process.env }).trim(), play);
     const tree = vs.calls.trees.find(t => t.id === 'lunaticflowView');
     assert.ok(tree, 'the Flow view is created');
-    const roots = await tree.treeDataProvider.getChildren();
+    let roots = await tree.treeDataProvider.getChildren();
     assert.strictEqual(roots.length, 1);
+
+    // An agent clones the repository for a work package and plans there: the clone shows up too.
+    execFileSync('python3', [LF, 'clone', 'wp1'], { cwd: repo, encoding: 'utf8', env: process.env });
+    const clone = path.join(play, 'wp1', path.basename(repo));
+    execFileSync('python3', [LF, 'plan', 'add', '--id', 'c1', '--title', 'In the clone'], { cwd: clone, encoding: 'utf8' });
+    await vs.commands.executeCommand('lunaticflow.refresh');
+    roots = await tree.treeDataProvider.getChildren();
+    const cloneNode = roots.find((n: any) => n.repo?.root === clone);
+    assert.ok(cloneNode, 'the playground clone appears in the Flow view');
+    assert.strictEqual(cloneNode.repo.origin, 'agents');
+    roots = roots.filter((n: any) => n.repo?.root === repo);
     const sprints = await tree.treeDataProvider.getChildren(roots[0]);
     const s1 = sprints.find((n: any) => n.sprint?.id === 's1');
     const s1Item = tree.treeDataProvider.getTreeItem(s1);
@@ -174,7 +193,7 @@ async function main() {
     assert.ok(!lenses.some((l: any) => l.command.command === 'lunaticflow.approveHunk'));
 
     for (const d of context.subscriptions) { d.dispose?.(); }
-    fs.rmSync(repo, { recursive: true, force: true });
+    for (const d of [repo, play, cfgHome]) { fs.rmSync(d, { recursive: true, force: true }); }
     console.log('flow extension tests passed');
 }
 

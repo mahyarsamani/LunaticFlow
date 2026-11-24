@@ -80,6 +80,7 @@ export const workspace = {
     getConfiguration: (section: string) => ({
         get: (k: string, d?: any) => (`${section}.${k}` in config ? config[`${section}.${k}`] : d),
         update: async (k: string, v: any) => { config[`${section}.${k}`] = v; },
+        inspect: (k: string) => ({ key: `${section}.${k}`, globalValue: config[`${section}.${k}`] }),
     }),
     registerTextDocumentContentProvider: (scheme: string, p: any) => { contentProviders.set(scheme, p); return new Disposable(); },
     onDidOpenTextDocument: new EventEmitter<any>().event,

@@ -1,9 +1,9 @@
 // Finds LunaticFlow repositories and agents on disk and keeps their state loaded.
 import * as vscode from 'vscode';
 import * as fs from 'fs';
-import * as os from 'os';
 import * as path from 'path';
 import { execFile } from 'child_process';
+import { expandPath, playgroundFor } from './playground';
 import { diffArgs, FileDiff, parseDiff } from './diff';
 import {
     AgentRecord, FLOW_DIR, Plan, Round, SprintState, SprintStatus, emptySprintState,
@@ -119,10 +119,6 @@ function safeReaddir(d: string): string[] {
 
 const SKIP = new Set(['node_modules', 'build', 'out', 'dist', '__pycache__', 'venv', '.venv']);
 
-function expandHome(p: string): string {
-    return p.startsWith('~') ? path.join(os.homedir(), p.slice(1)) : p;
-}
-
 function pidAlive(pid: number): boolean {
     if (!pid) { return false; }
     try { process.kill(pid, 0); return true; } catch (e) { return (e as NodeJS.ErrnoException).code === 'EPERM'; }
@@ -170,8 +166,14 @@ export class FlowStore implements vscode.Disposable {
         for (const f of vscode.workspace.workspaceFolders ?? []) {
             if (f.uri.scheme === 'file') { walk(f.uri.fsPath, 0, 'workspace'); }
         }
-        for (const r of this.config().get<string[]>('agentRoots', [])) {
-            const root = expandHome(r);
+        // Agents' clones: the playground (per workspace folder, or the user value) and any extra roots.
+        const agentDirs = new Set<string>();
+        for (const f of [undefined, ...(vscode.workspace.workspaceFolders ?? [])]) {
+            const p = playgroundFor(f);
+            if (p) { agentDirs.add(p); }
+        }
+        for (const r of this.config().get<string[]>('agentRoots', [])) { agentDirs.add(expandPath(r)); }
+        for (const root of agentDirs) {
             if (fs.existsSync(root)) { walk(root, 0, 'agents'); }
         }
         const old = new Map(this.repos.map(r => [r.root, r]));

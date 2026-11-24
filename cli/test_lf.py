@@ -146,6 +146,45 @@ class FlowTest(unittest.TestCase):
         hook = self.lf("hook", "stop", inp=json.dumps({"session_id": "x", "cwd": self.root})).stdout
         self.assertEqual(hook.strip(), "")
 
+    def test_playground_and_clone(self):
+        with tempfile.TemporaryDirectory() as cfg, tempfile.TemporaryDirectory() as play, \
+                tempfile.TemporaryDirectory() as subsrc:
+            env = {**os.environ, "XDG_CONFIG_HOME": cfg}
+            env.pop("LUNATICFLOW_PLAYGROUND", None)
+            def run(*a, cwd=self.root):
+                return subprocess.run([*LF, *a], cwd=cwd, env=env, capture_output=True, text=True)
+            self.assertNotEqual(run("playground").returncode, 0)  # nothing set yet
+            # The extension mirrors the setting: a default and a per-workspace override.
+            os.makedirs(os.path.join(cfg, "lunaticflow"))
+            with open(os.path.join(cfg, "lunaticflow", "config.json"), "w") as f:
+                json.dump({"agentPlayground": "/nowhere", "workspaces": {self.root: play}}, f)
+            self.assertEqual(run("playground").stdout.strip(), play)
+            self.assertEqual(run("playground", cwd=subsrc).stdout.strip(), "/nowhere")
+            env["LUNATICFLOW_PLAYGROUND"] = "${env:HOME}/x"
+            self.assertEqual(run("playground").stdout.strip(), os.path.join(os.environ["HOME"], "x"))
+            del env["LUNATICFLOW_PLAYGROUND"]
+
+            # A submodule, checked out locally, to be cloned from the local copy.
+            sh(subsrc, "git", "init", "-q", "-b", "main")
+            sh(subsrc, "git", "-c", "user.email=t@t", "-c", "user.name=t", "commit", "-q", "--allow-empty", "-m", "s")
+            sh(subsrc, "git", "remote", "add", "origin", "https://example.com/sub.git")
+            sh(self.root, "git", "-c", "protocol.file.allow=always", "submodule", "add", "-q", subsrc, "dep")
+            sh(self.root, "git", "commit", "-qm", "add dep")
+            sh(os.path.join(self.root, "dep"), "git", "remote", "set-url", "origin", "https://example.com/sub.git")
+            sh(self.root, "git", "remote", "add", "origin", "https://example.com/main.git")
+
+            out = run("clone", "dx100", "--submodules")
+            self.assertEqual(out.returncode, 0, out.stderr)
+            dest = os.path.join(play, "dx100", os.path.basename(self.root))
+            self.assertEqual(out.stdout.splitlines()[0], dest)
+            self.assertEqual(sh(dest, "git", "rev-parse", "--abbrev-ref", "HEAD").stdout.strip(), "agent/dx100")
+            self.assertEqual(sh(dest, "git", "remote", "get-url", "origin").stdout.strip(), "https://example.com/main.git")
+            self.assertEqual(sh(dest, "git", "remote", "get-url", "local").stdout.strip(), self.root)
+            self.assertEqual(sh(os.path.join(dest, "dep"), "git", "remote", "get-url", "origin").stdout.strip(),
+                             "https://example.com/sub.git")
+            self.assertTrue(os.path.isdir(os.path.join(dest, ".lunaticflow")))
+            self.assertNotEqual(run("clone", "dx100").returncode, 0)  # never over an existing clone
+
     def test_hooks_register_agents(self):
         self.lf("init")
         self.lf("hook", "session-start", inp=json.dumps({"session_id": "S", "cwd": self.root}))

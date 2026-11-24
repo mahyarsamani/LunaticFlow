@@ -26,7 +26,9 @@ If `lf` is not on the PATH, use `python3 "${CLAUDE_PLUGIN_ROOT}/bin/lf.py"` in i
    Give parallel sprints disjoint scopes; they conflict where they meet otherwise.
 4. Show the plan (`lf plan show`) and wait for the user's approval before starting, as the repository's CLAUDE.md asks.
 
-Parallel paths are worked by separate agents: one clone and one `agent/<wp>` branch per path (see the repository's agent-branch rules), or a subagent in its own worktree.
+Parallel paths are worked by separate agents, each in its own clone on its own `agent/<wp>` branch (see the repository's agent-branch rules).
+Make the clone with `lf clone <wp> --submodules`: it lands in the agent playground (`lf playground` prints it, for example `/scr/msamani/agents/<wp>/<repo>`), takes submodules from the local checkout, keeps pushes going to the original remote, and is set up for sprints.
+Files an agent writes outside its repository also go under `<playground>/<wp>/`.
 One agent never works two sprints at once.
 
 ## 2. Do one sprint
