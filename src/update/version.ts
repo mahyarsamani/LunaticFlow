@@ -17,6 +17,23 @@ export function compareVersions(a: string, b: string): number {
     return x.pre < y.pre ? -1 : 1;
 }
 
+/**
+ * The version after `current` released on `date`, by LunaticFlow's calendar scheme.
+ * Stable: yy.m.revision (26.11.0). Beta: 0.yymm.revision (0.2611.0), the year and month in one
+ * field because VS Code accepts only three-part semver. The revision counts releases within a
+ * month and starts at 0. Months are not zero-padded: semver forbids leading zeros.
+ */
+export function nextVersion(current: string, date: Date, stable: boolean): string {
+    const yy = date.getFullYear() % 100, m = date.getMonth() + 1;
+    const [major, minor, patch] = current.replace(/^v/i, '').split(/[.-]/).map(n => parseInt(n, 10) || 0);
+    const [a, b] = stable ? [yy, m] : [0, yy * 100 + m];
+    const next = `${a}.${b}.${major === a && minor === b ? patch + 1 : 0}`;
+    if (compareVersions(next, current) <= 0) {
+        throw new Error(`${next} would not be newer than ${current}` + (stable ? '' : ' (a beta cannot follow a stable release)'));
+    }
+    return next;
+}
+
 export interface Release {
     tag_name: string;
     html_url: string;

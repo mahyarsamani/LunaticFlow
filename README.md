@@ -65,9 +65,14 @@ Once a day it checks the latest release, and when it is newer it offers **Update
 **Update** downloads the release's `.vsix`, installs it with VS Code's own installer (on the remote host when you work over SSH), and offers to reload the window.
 **LunaticFlow: Check for Updates** checks right away; `lunaticflow.checkForUpdates` turns the daily check off.
 
-To publish a release, run `npm run release`.
-It bumps the patch version, commits, tags `v<version>` and pushes; the **Release** workflow then tests, packages and attaches the `.vsix`.
-For a minor or major release, bump `package.json` by hand, commit, then `git tag v<version> && git push --follow-tags`.
+Versions follow the calendar:
+- **Beta** (now): `0.yymm.revision`, for example `0.2611.0`; the year and month share one field because VS Code accepts only three-part versions.
+- **Stable**: `yy.m.revision`, for example `26.11.0`; months are not zero-padded, which semver forbids.
+
+The revision counts the releases within a month and starts at 0.
+
+To publish a release, run `npm run release` (a beta) or `npm run release -- --stable`; add `--dry-run` to see the next version without changing anything.
+It sets the version, commits, tags `v<version>` and pushes; the **Release** workflow then tests, packages and attaches the `.vsix`.
 The workflow refuses a tag that does not match `package.json`.
 
 ## Tab Groups

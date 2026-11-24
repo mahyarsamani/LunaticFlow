@@ -353,7 +353,7 @@
     "watch": "tsc -watch -p ./",
     "test": "npm run compile && node out/test/format.test.js && node out/test/flow.test.js && node out/test/flow.ext.test.js && node out/test/update.test.js && python3 cli/test_lf.py && cmp cli/lf.py claude-plugin/bin/lf.py",
     "package": "vsce package --skip-license -o lunaticflow-$npm_package_version.vsix",
-    "release": "npm version patch -m \"Release %s\" && git push --follow-tags",
+    "release": "npm run compile && node scripts/release.js",
     "sync-plugin": "cp cli/lf.py claude-plugin/bin/lf.py",
     "lint": "eslint src --ext ts"
   },

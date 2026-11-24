@@ -1,7 +1,8 @@
-# Builds the extension for every version tag (v0.3.1, v0.4.0, ...) and attaches the .vsix to a
-# GitHub release. Installed copies of LunaticFlow check these releases and offer a one-click update.
-# To release: `npm run release` (bumps the patch version, commits, tags, and pushes), or bump
-# package.json by hand, commit, then `git tag v<version> && git push --follow-tags`.
+# Builds the extension for every version tag (v0.2611.0 for a beta, v26.11.0 for a stable release)
+# and attaches the .vsix to a GitHub release. Installed copies of LunaticFlow check these releases
+# and offer a one-click update.
+# To release: `npm run release` (beta) or `npm run release -- --stable`, which set the next
+# calendar version, commit, tag, and push (scripts/release.js).
 name: Release
 
 on:

@@ -12,5 +12,6 @@ claude-plugin/**
 .claude-plugin/**
 package-lock.json
 .github/**
+scripts/**
 *.vsix
 .gitignore
