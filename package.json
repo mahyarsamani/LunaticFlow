@@ -1,16 +1,17 @@
 {
-  "name": "tab-groups-pro",
-  "displayName": "Tab Groups Pro",
-  "description": "Organize your open files into named, color-coded groups like Chrome tab groups, and leave review comments on Markdown previews.",
-  "version": "0.2.0",
+  "name": "lunaticflow",
+  "displayName": "LunaticFlow",
+  "description": "Work with coding agents in sprints: plan them as a graph, review each sprint in the changed files (approve, reject, comment on lines), and see what changed since your review. Also: tab groups and Markdown review comments.",
+  "version": "0.3.0",
   "publisher": "mahyarsamani",
   "license": "MIT",
   "engines": {
-    "vscode": "^1.80.0"
+    "vscode": "^1.85.0"
   },
+  "extensionKind": ["workspace"],
   "categories": ["Other"],
-  "keywords": ["tabs", "groups", "organizer", "files", "workspace", "markdown", "review", "comments"],
-  "activationEvents": ["onStartupFinished", "onWebviewPanel:mdReview.preview"],
+  "keywords": ["agents", "claude", "sprints", "code review", "tabs", "groups", "markdown", "review", "comments"],
+  "activationEvents": ["onStartupFinished", "onWebviewPanel:mdReview.preview", "onFileSystem:lunaticflow"],
   "main": "./out/extension.js",
   "icon": "images/icon.png",
   "contributes": {
@@ -18,13 +19,18 @@
       "activitybar": [
         {
           "id": "tabGroupsContainer",
-          "title": "Tab Groups",
+          "title": "LunaticFlow",
           "icon": "images/tab-groups-icon.svg"
         }
       ]
     },
     "views": {
       "tabGroupsContainer": [
+        {
+          "id": "lunaticflowView",
+          "name": "Flow",
+          "icon": "$(git-pull-request)"
+        },
         {
           "id": "tabGroupsView",
           "name": "Groups",
@@ -39,6 +45,10 @@
     },
     "viewsWelcome": [
       {
+        "view": "lunaticflowView",
+        "contents": "No sprint plans found in this workspace or under the agent roots.\nAn agent starts one with `lf init` and `lf plan add`.\n[Set Up LunaticFlow in a Repository](command:lunaticflow.initRepo)\n[Install the lf CLI](command:lunaticflow.installCli)"
+      },
+      {
         "view": "tabGroupsView",
         "contents": "No tab groups yet.\n[New Group](command:tabGroups.createGroup)\n[Group All Open Tabs](command:tabGroups.addCurrentFilesToNewGroup)"
       },
@@ -48,6 +58,33 @@
       }
     ],
     "commands": [
+      { "command": "lunaticflow.refresh", "title": "Refresh", "icon": "$(refresh)", "category": "LunaticFlow" },
+      { "command": "lunaticflow.nextReview", "title": "Review Next Sprint", "icon": "$(eye)", "category": "LunaticFlow" },
+      { "command": "lunaticflow.showPlan", "title": "Show Plan Graph and Timeline", "icon": "$(type-hierarchy)", "category": "LunaticFlow" },
+      { "command": "lunaticflow.initRepo", "title": "Set Up in a Repository", "category": "LunaticFlow" },
+      { "command": "lunaticflow.installCli", "title": "Install the lf CLI for Agents", "category": "LunaticFlow" },
+      { "command": "lunaticflow.approveHunk", "title": "Approve Change", "icon": "$(check)", "category": "LunaticFlow" },
+      { "command": "lunaticflow.rejectHunk", "title": "Reject Change", "icon": "$(close)", "category": "LunaticFlow" },
+      { "command": "lunaticflow.clearHunk", "title": "Undo Decision", "icon": "$(discard)", "category": "LunaticFlow" },
+      { "command": "lunaticflow.commentHunk", "title": "Comment on Change", "icon": "$(comment)", "category": "LunaticFlow" },
+      { "command": "lunaticflow.approveFile", "title": "Approve File", "icon": "$(check-all)", "category": "LunaticFlow" },
+      { "command": "lunaticflow.submitReview", "title": "Send Review to Agent", "icon": "$(send)", "category": "LunaticFlow" },
+      { "command": "lunaticflow.node.approveHunk", "title": "Approve", "icon": "$(check)" },
+      { "command": "lunaticflow.node.rejectHunk", "title": "Reject", "icon": "$(close)" },
+      { "command": "lunaticflow.node.clearHunk", "title": "Undo Decision", "icon": "$(discard)" },
+      { "command": "lunaticflow.node.commentHunk", "title": "Comment", "icon": "$(comment)" },
+      { "command": "lunaticflow.node.approveFile", "title": "Approve File", "icon": "$(check-all)" },
+      { "command": "lunaticflow.node.submitReview", "title": "Send Review", "icon": "$(send)" },
+      { "command": "lunaticflow.node.openRound", "title": "Review", "icon": "$(eye)" },
+      { "command": "lunaticflow.node.resolveThread", "title": "Resolve", "icon": "$(check)" },
+      { "command": "lunaticflow.node.reopenThread", "title": "Reopen", "icon": "$(issue-reopened)" },
+      { "command": "lunaticflow.resumeResearch", "title": "Open Session", "icon": "$(comment-discussion)" },
+      { "command": "lunaticflow.comment.create", "title": "Comment", "enablement": "!commentIsEmpty" },
+      { "command": "lunaticflow.comment.reply", "title": "Reply", "enablement": "!commentIsEmpty" },
+      { "command": "lunaticflow.comment.cancel", "title": "Cancel" },
+      { "command": "lunaticflow.comment.resolve", "title": "Resolve", "icon": "$(check)" },
+      { "command": "lunaticflow.comment.reopen", "title": "Reopen", "icon": "$(issue-reopened)" },
+      { "command": "lunaticflow.comment.delete", "title": "Delete Draft", "icon": "$(trash)" },
       { "command": "tabGroups.createGroup", "title": "New Group", "icon": "$(add)", "category": "Tab Groups" },
       { "command": "tabGroups.renameGroup", "title": "Rename Group", "icon": "$(edit)", "category": "Tab Groups" },
       { "command": "tabGroups.deleteGroup", "title": "Delete Group", "icon": "$(trash)", "category": "Tab Groups" },
@@ -77,6 +114,27 @@
     ],
     "menus": {
       "commandPalette": [
+        { "command": "lunaticflow.approveHunk", "when": "resourceScheme == lunaticflow" },
+        { "command": "lunaticflow.rejectHunk", "when": "resourceScheme == lunaticflow" },
+        { "command": "lunaticflow.clearHunk", "when": "resourceScheme == lunaticflow" },
+        { "command": "lunaticflow.commentHunk", "when": "resourceScheme == lunaticflow" },
+        { "command": "lunaticflow.approveFile", "when": "resourceScheme == lunaticflow" },
+        { "command": "lunaticflow.node.approveHunk", "when": "false" },
+        { "command": "lunaticflow.node.rejectHunk", "when": "false" },
+        { "command": "lunaticflow.node.clearHunk", "when": "false" },
+        { "command": "lunaticflow.node.commentHunk", "when": "false" },
+        { "command": "lunaticflow.node.approveFile", "when": "false" },
+        { "command": "lunaticflow.node.submitReview", "when": "false" },
+        { "command": "lunaticflow.node.openRound", "when": "false" },
+        { "command": "lunaticflow.node.resolveThread", "when": "false" },
+        { "command": "lunaticflow.node.reopenThread", "when": "false" },
+        { "command": "lunaticflow.resumeResearch", "when": "false" },
+        { "command": "lunaticflow.comment.create", "when": "false" },
+        { "command": "lunaticflow.comment.reply", "when": "false" },
+        { "command": "lunaticflow.comment.cancel", "when": "false" },
+        { "command": "lunaticflow.comment.resolve", "when": "false" },
+        { "command": "lunaticflow.comment.reopen", "when": "false" },
+        { "command": "lunaticflow.comment.delete", "when": "false" },
         { "command": "tabGroups.renameGroup", "when": "false" },
         { "command": "tabGroups.deleteGroup", "when": "false" },
         { "command": "tabGroups.addActiveFileToGroup", "when": "false" },
@@ -93,6 +151,11 @@
         { "command": "mdReview.revealComment", "when": "false" }
       ],
       "view/title": [
+        { "command": "lunaticflow.nextReview", "when": "view == lunaticflowView", "group": "navigation@1" },
+        { "command": "lunaticflow.showPlan", "when": "view == lunaticflowView", "group": "navigation@2" },
+        { "command": "lunaticflow.refresh", "when": "view == lunaticflowView", "group": "navigation@3" },
+        { "command": "lunaticflow.initRepo", "when": "view == lunaticflowView", "group": "2_setup@1" },
+        { "command": "lunaticflow.installCli", "when": "view == lunaticflowView", "group": "2_setup@2" },
         { "command": "tabGroups.createGroup", "when": "view == tabGroupsView", "group": "navigation@1" },
         { "command": "tabGroups.addCurrentFilesToNewGroup", "when": "view == tabGroupsView", "group": "navigation@2" },
         { "command": "tabGroups.refresh", "when": "view == tabGroupsView", "group": "navigation@3" },
@@ -101,6 +164,17 @@
         { "command": "mdReview.clearAllComments", "when": "view == reviewCommentsView", "group": "navigation@3" }
       ],
       "view/item/context": [
+        { "command": "lunaticflow.showPlan", "when": "view == lunaticflowView && viewItem == flowRepo", "group": "inline@1" },
+        { "command": "lunaticflow.node.openRound", "when": "view == lunaticflowView && viewItem == sprint-in_review", "group": "inline@1" },
+        { "command": "lunaticflow.node.submitReview", "when": "view == lunaticflowView && viewItem == sprint-in_review", "group": "inline@2" },
+        { "command": "lunaticflow.node.approveFile", "when": "view == lunaticflowView && viewItem == flowFile-open", "group": "inline@1" },
+        { "command": "lunaticflow.node.approveHunk", "when": "view == lunaticflowView && viewItem =~ /^flowHunk-(undecided|rejected)$/", "group": "inline@1" },
+        { "command": "lunaticflow.node.rejectHunk", "when": "view == lunaticflowView && viewItem =~ /^flowHunk-(undecided|approved)$/", "group": "inline@2" },
+        { "command": "lunaticflow.node.commentHunk", "when": "view == lunaticflowView && viewItem =~ /^flowHunk-/", "group": "inline@3" },
+        { "command": "lunaticflow.node.clearHunk", "when": "view == lunaticflowView && viewItem =~ /^flowHunk-(approved|rejected)$/", "group": "inline@4" },
+        { "command": "lunaticflow.node.resolveThread", "when": "view == lunaticflowView && viewItem == flowThread-open", "group": "inline@1" },
+        { "command": "lunaticflow.node.reopenThread", "when": "view == lunaticflowView && viewItem == flowThread-resolved", "group": "inline@1" },
+        { "command": "lunaticflow.resumeResearch", "when": "view == lunaticflowView && viewItem == flowResearch", "group": "inline@1" },
         { "command": "tabGroups.switchToGroup", "when": "view == tabGroupsView && viewItem == group", "group": "inline@1" },
         { "command": "tabGroups.openAllInGroup", "when": "view == tabGroupsView && viewItem == group", "group": "inline@2" },
         { "command": "tabGroups.closeAllInGroup", "when": "view == tabGroupsView && viewItem == group", "group": "inline@3" },
@@ -130,7 +204,25 @@
         { "command": "mdReview.deleteComment", "when": "view == reviewCommentsView && viewItem == reviewComment", "group": "1_comment@2" }
       ],
       "editor/title": [
-        { "command": "mdReview.openPreview", "when": "editorLangId == markdown", "group": "navigation" }
+        { "command": "mdReview.openPreview", "when": "editorLangId == markdown", "group": "navigation" },
+        { "command": "lunaticflow.approveFile", "when": "resourceScheme == lunaticflow", "group": "navigation@1" },
+        { "command": "lunaticflow.submitReview", "when": "resourceScheme == lunaticflow", "group": "navigation@2" }
+      ],
+      "editor/context": [
+        { "command": "lunaticflow.approveHunk", "when": "resourceScheme == lunaticflow", "group": "0_lunaticflow@1" },
+        { "command": "lunaticflow.rejectHunk", "when": "resourceScheme == lunaticflow", "group": "0_lunaticflow@2" },
+        { "command": "lunaticflow.commentHunk", "when": "resourceScheme == lunaticflow", "group": "0_lunaticflow@3" },
+        { "command": "lunaticflow.clearHunk", "when": "resourceScheme == lunaticflow", "group": "0_lunaticflow@4" }
+      ],
+      "comments/commentThread/context": [
+        { "command": "lunaticflow.comment.create", "when": "commentController == lunaticflow && commentThreadIsEmpty", "group": "inline@1" },
+        { "command": "lunaticflow.comment.reply", "when": "commentController == lunaticflow && !commentThreadIsEmpty", "group": "inline@1" },
+        { "command": "lunaticflow.comment.cancel", "when": "commentController == lunaticflow && commentThreadIsEmpty", "group": "inline@2" }
+      ],
+      "comments/commentThread/title": [
+        { "command": "lunaticflow.comment.resolve", "when": "commentController == lunaticflow && commentThread =~ /^open/", "group": "inline@1" },
+        { "command": "lunaticflow.comment.reopen", "when": "commentController == lunaticflow && commentThread == resolved", "group": "inline@1" },
+        { "command": "lunaticflow.comment.delete", "when": "commentController == lunaticflow && commentThread == open-draft", "group": "inline@2" }
       ],
       "editor/title/context": [
         { "command": "tabGroups.addActiveFile", "group": "tabgroups@1" }
@@ -141,6 +233,9 @@
       ]
     },
     "keybindings": [
+      { "command": "lunaticflow.approveHunk", "key": "ctrl+alt+y", "mac": "cmd+alt+y", "when": "resourceScheme == lunaticflow" },
+      { "command": "lunaticflow.rejectHunk", "key": "ctrl+alt+n", "mac": "cmd+alt+n", "when": "resourceScheme == lunaticflow" },
+      { "command": "lunaticflow.commentHunk", "key": "ctrl+alt+m", "mac": "cmd+alt+m", "when": "resourceScheme == lunaticflow" },
       {
         "command": "mdReview.openPreview",
         "key": "ctrl+alt+r",
@@ -154,6 +249,32 @@
       }
     ],
     "configuration": [
+      {
+        "title": "LunaticFlow",
+        "properties": {
+          "lunaticflow.agentRoots": {
+            "type": "array",
+            "items": { "type": "string" },
+            "default": ["/scr/msamani/agents"],
+            "description": "Folders that hold agents' clones (one per work package). Repositories with a .lunaticflow plan under them appear in the Flow view next to the workspace's own. Missing folders are ignored; ~ means your home folder."
+          },
+          "lunaticflow.scanDepth": {
+            "type": "number",
+            "default": 2,
+            "description": "How many folder levels below each workspace folder and agent root to look for .lunaticflow plans (2 finds projects/sift in the PhD repository)."
+          },
+          "lunaticflow.notify": {
+            "type": "boolean",
+            "default": true,
+            "description": "Show a notification when an agent hands a sprint over for review."
+          },
+          "lunaticflow.reviewerName": {
+            "type": "string",
+            "default": "You",
+            "description": "Your name on review comments."
+          }
+        }
+      },
       {
         "title": "Tab Groups",
         "properties": {
@@ -205,7 +326,8 @@
     "vscode:prepublish": "npm run compile",
     "compile": "tsc -p ./",
     "watch": "tsc -watch -p ./",
-    "test": "npm run compile && node out/test/format.test.js",
+    "test": "npm run compile && node out/test/format.test.js && node out/test/flow.test.js && node out/test/flow.ext.test.js && python3 cli/test_lf.py && cmp cli/lf.py claude-plugin/bin/lf.py",
+    "sync-plugin": "cp cli/lf.py claude-plugin/bin/lf.py",
     "lint": "eslint src --ext ts"
   },
   "devDependencies": {

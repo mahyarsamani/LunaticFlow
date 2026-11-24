@@ -6,3 +6,8 @@ out/test/**
 *.vsix
 tsconfig.json
 .eslintrc.json
+cli/test_*.py
+cli/__pycache__/**
+claude-plugin/**
+.claude-plugin/**
+package-lock.json

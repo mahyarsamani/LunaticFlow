@@ -7,8 +7,15 @@ import {
 } from './tabGroupsProvider';
 import { TabGroupsStorage } from './tabGroupsStorage';
 import { activateReview } from './review';
+import { activateFlow } from './flow';
 
 export function activate(context: vscode.ExtensionContext) {
+    try {
+        activateFlow(context);
+    } catch (e) {
+        // Keep tab groups and Markdown review working even if the Flow view fails to start.
+        vscode.window.showErrorMessage(`LunaticFlow: the Flow view failed to start: ${e instanceof Error ? e.message : e}`);
+    }
     const review = activateReview(context);
     const storage = new TabGroupsStorage(context);
     const provider = new TabGroupsProvider(storage, review.store);

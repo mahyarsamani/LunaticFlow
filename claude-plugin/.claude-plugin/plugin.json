@@ -1,0 +1,6 @@
+{
+  "name": "lunaticflow",
+  "version": "0.3.0",
+  "description": "Work in sprints the user reviews in the LunaticFlow VS Code extension: the lunaticflow skill, the lf CLI, a Stop hook that holds an agent to its unfinished sprint, and hooks that show sessions and subagents in the Flow view.",
+  "author": { "name": "Mahyar Samani" }
+}
