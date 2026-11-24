@@ -11,3 +11,6 @@ cli/__pycache__/**
 claude-plugin/**
 .claude-plugin/**
 package-lock.json
+.github/**
+*.vsix
+.gitignore

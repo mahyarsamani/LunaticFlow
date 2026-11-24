@@ -8,8 +8,10 @@ import {
 import { TabGroupsStorage } from './tabGroupsStorage';
 import { activateReview } from './review';
 import { activateFlow } from './flow';
+import { activateUpdater } from './update';
 
 export function activate(context: vscode.ExtensionContext) {
+    activateUpdater(context);
     try {
         activateFlow(context);
     } catch (e) {

@@ -2,9 +2,13 @@
   "name": "lunaticflow",
   "displayName": "LunaticFlow",
   "description": "Work with coding agents in sprints: plan them as a graph, review each sprint in the changed files (approve, reject, comment on lines), and see what changed since your review. Also: tab groups and Markdown review comments.",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "publisher": "mahyarsamani",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/mahyarsamani/Tab-Groups.git"
+  },
   "engines": {
     "vscode": "^1.85.0"
   },
@@ -63,6 +67,7 @@
       { "command": "lunaticflow.showPlan", "title": "Show Plan Graph and Timeline", "icon": "$(type-hierarchy)", "category": "LunaticFlow" },
       { "command": "lunaticflow.initRepo", "title": "Set Up in a Repository", "category": "LunaticFlow" },
       { "command": "lunaticflow.installCli", "title": "Install the lf CLI for Agents", "category": "LunaticFlow" },
+      { "command": "lunaticflow.checkForUpdates", "title": "Check for Updates", "category": "LunaticFlow" },
       { "command": "lunaticflow.approveHunk", "title": "Approve Change", "icon": "$(check)", "category": "LunaticFlow" },
       { "command": "lunaticflow.rejectHunk", "title": "Reject Change", "icon": "$(close)", "category": "LunaticFlow" },
       { "command": "lunaticflow.clearHunk", "title": "Undo Decision", "icon": "$(discard)", "category": "LunaticFlow" },
@@ -156,6 +161,7 @@
         { "command": "lunaticflow.refresh", "when": "view == lunaticflowView", "group": "navigation@3" },
         { "command": "lunaticflow.initRepo", "when": "view == lunaticflowView", "group": "2_setup@1" },
         { "command": "lunaticflow.installCli", "when": "view == lunaticflowView", "group": "2_setup@2" },
+        { "command": "lunaticflow.checkForUpdates", "when": "view == lunaticflowView", "group": "2_setup@3" },
         { "command": "tabGroups.createGroup", "when": "view == tabGroupsView", "group": "navigation@1" },
         { "command": "tabGroups.addCurrentFilesToNewGroup", "when": "view == tabGroupsView", "group": "navigation@2" },
         { "command": "tabGroups.refresh", "when": "view == tabGroupsView", "group": "navigation@3" },
@@ -272,6 +278,16 @@
             "type": "string",
             "default": "You",
             "description": "Your name on review comments."
+          },
+          "lunaticflow.checkForUpdates": {
+            "type": "boolean",
+            "default": true,
+            "description": "Check GitHub once a day for a newer LunaticFlow release and offer a one-click update."
+          },
+          "lunaticflow.updateRepository": {
+            "type": "string",
+            "default": "mahyarsamani/Tab-Groups",
+            "description": "The GitHub repository (owner/name) whose releases carry the LunaticFlow .vsix."
           }
         }
       },
@@ -326,13 +342,16 @@
     "vscode:prepublish": "npm run compile",
     "compile": "tsc -p ./",
     "watch": "tsc -watch -p ./",
-    "test": "npm run compile && node out/test/format.test.js && node out/test/flow.test.js && node out/test/flow.ext.test.js && python3 cli/test_lf.py && cmp cli/lf.py claude-plugin/bin/lf.py",
+    "test": "npm run compile && node out/test/format.test.js && node out/test/flow.test.js && node out/test/flow.ext.test.js && node out/test/update.test.js && python3 cli/test_lf.py && cmp cli/lf.py claude-plugin/bin/lf.py",
+    "package": "vsce package --skip-license -o lunaticflow-$npm_package_version.vsix",
+    "release": "npm version patch -m \"Release %s\" && git push --follow-tags",
     "sync-plugin": "cp cli/lf.py claude-plugin/bin/lf.py",
     "lint": "eslint src --ext ts"
   },
   "devDependencies": {
     "@types/vscode": "^1.80.0",
     "@types/node": "^18.0.0",
+    "@vscode/vsce": "^3.2.0",
     "typescript": "^5.0.0"
   }
 }

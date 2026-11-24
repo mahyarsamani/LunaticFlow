@@ -58,6 +58,18 @@ Everything is in `<repo>/.lunaticflow/`, which `lf init` adds to `.git/info/excl
 `plan.json` (the sprints and their dependencies), `sprints/<id>.json` (rounds, decisions, threads) and `agents/<id>.json` (sessions and subagents).
 The agent and the extension read and write the same files; the reviewer sees committed snapshots only, so a round never changes under you.
 
+## Updates
+
+LunaticFlow updates itself from this repository's GitHub releases.
+Once a day it checks the latest release, and when it is newer it offers **Update**, **Release Notes** and **Skip This Version**.
+**Update** downloads the release's `.vsix`, installs it with VS Code's own installer (on the remote host when you work over SSH), and offers to reload the window.
+**LunaticFlow: Check for Updates** checks right away; `lunaticflow.checkForUpdates` turns the daily check off.
+
+To publish a release, run `npm run release`.
+It bumps the patch version, commits, tags `v<version>` and pushes; the **Release** workflow then tests, packages and attaches the `.vsix`.
+For a minor or major release, bump `package.json` by hand, commit, then `git tag v<version> && git push --follow-tags`.
+The workflow refuses a tag that does not match `package.json`.
+
 ## Tab Groups
 
 Organize your VS Code open files into named, color-coded groups — just like Chrome tab groups — and review Markdown files by leaving comments right on the rendered preview.
@@ -108,6 +120,8 @@ All commands are available via `Ctrl+Shift+P` → search "Tab Groups" or "Markdo
 | `lunaticflow.scanDepth` | `2` | Folder levels searched for `.lunaticflow/` plans |
 | `lunaticflow.notify` | `true` | Notify when a sprint is handed over for review |
 | `lunaticflow.reviewerName` | `"You"` | Your name on review comments |
+| `lunaticflow.checkForUpdates` | `true` | Check GitHub once a day for a newer release |
+| `lunaticflow.updateRepository` | `"mahyarsamani/Tab-Groups"` | Where the releases come from |
 | `diffEditor.codeLens` | `false` | VS Code's own setting; LunaticFlow offers to turn it on so Approve / Reject / Comment show above each change |
 | `tabGroupsPro.showFileIcons` | `true` | Show file type icons in the groups panel |
 | `tabGroupsPro.showFilePath` | `false` | Show workspace-relative paths instead of file names |
@@ -122,7 +136,7 @@ All commands are available via `Ctrl+Shift+P` → search "Tab Groups" or "Markdo
 ```bash
 npm install
 npm test          # compile, the TypeScript unit tests, and the lf CLI tests (needs python3 and git)
-npx @vscode/vsce package
+npm run package   # lunaticflow-<version>.vsix
 ```
 
 `cli/lf.py` is the source of the CLI; `claude-plugin/bin/lf.py` is a copy the plugin ships (`npm run sync-plugin` refreshes it, and the tests fail if the two differ).
