@@ -41,7 +41,7 @@ If an agent is not blocked in `lf await` when you send a review, LunaticFlow off
 
 1. Install the Claude Code plugin, which carries the `lunaticflow` skill, the `lf` CLI and the hooks:
    ```
-   /plugin install lunaticflow --marketplace mahyarsamani/tab-groups
+   /plugin install lunaticflow --marketplace mahyarsamani/LunaticFlow
    ```
    For a local clone: `/plugin marketplace add /path/to/this/repo`, then `/plugin install lunaticflow@lunaticflow`.
 2. Optionally, **LunaticFlow: Install the lf CLI for Agents** puts `lf` in `~/.local/bin` for use in a terminal.
@@ -122,15 +122,15 @@ All commands are available via `Ctrl+Shift+P` → search "Tab Groups" or "Markdo
 | `lunaticflow.notify` | `true` | Notify when a sprint is handed over for review |
 | `lunaticflow.reviewerName` | `"You"` | Your name on review comments |
 | `lunaticflow.checkForUpdates` | `true` | Check GitHub once a day for a newer release |
-| `lunaticflow.updateRepository` | `"mahyarsamani/Tab-Groups"` | Where the releases come from |
+| `lunaticflow.updateRepository` | `"mahyarsamani/LunaticFlow"` | Where the releases come from |
 | `diffEditor.codeLens` | `false` | VS Code's own setting; LunaticFlow offers to turn it on so Approve / Reject / Comment show above each change |
-| `tabGroupsPro.showFileIcons` | `true` | Show file type icons in the groups panel |
-| `tabGroupsPro.showFilePath` | `false` | Show workspace-relative paths instead of file names |
-| `tabGroupsPro.switchClosesOtherTabs` | `true` | Close tabs outside the group when switching to it |
-| `tabGroupsPro.showStatusBar` | `true` | Show the current group in the status bar |
-| `mdReview.separator` | `"; "` | Joins several comments on one line |
-| `mdReview.includeQuote` | `false` | Export `"selected text" comment` for selection comments |
-| `mdReview.absolutePaths` | `false` | Export absolute paths instead of workspace-relative ones |
+| `lunaticflow.tabGroups.showFileIcons` | `true` | Show file type icons in the groups panel |
+| `lunaticflow.tabGroups.showFilePath` | `false` | Show workspace-relative paths instead of file names |
+| `lunaticflow.tabGroups.switchClosesOtherTabs` | `true` | Close tabs outside the group when switching to it |
+| `lunaticflow.tabGroups.showStatusBar` | `true` | Show the current group in the status bar |
+| `lunaticflow.markdownReview.separator` | `"; "` | Joins several comments on one line |
+| `lunaticflow.markdownReview.includeQuote` | `false` | Export `"selected text" comment` for selection comments |
+| `lunaticflow.markdownReview.absolutePaths` | `false` | Export absolute paths instead of workspace-relative ones |
 
 ## Development
 

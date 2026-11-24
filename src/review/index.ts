@@ -18,7 +18,7 @@ export function activateReview(context: vscode.ExtensionContext): ReviewApi {
     const previews = new Map<string, ReviewPreview>();
     let lastActive: string | undefined;
 
-    const config = () => vscode.workspace.getConfiguration('mdReview');
+    const config = () => vscode.workspace.getConfiguration('lunaticflow.markdownReview');
     const displayPath = (uri: vscode.Uri) =>
         config().get<boolean>('absolutePaths') ? uri.fsPath : vscode.workspace.asRelativePath(uri);
     const formatFiles = (files: { uri: vscode.Uri; comments: { line: number; text: string; quote?: string }[] }[]) =>

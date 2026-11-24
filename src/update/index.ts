@@ -42,7 +42,7 @@ export function activateUpdater(context: vscode.ExtensionContext): void {
     let busy = false;
 
     async function latest(): Promise<Release> {
-        const repo = config().get<string>('updateRepository', 'mahyarsamani/Tab-Groups');
+        const repo = config().get<string>('updateRepository', 'mahyarsamani/LunaticFlow');
         const body = await get(`https://api.github.com/repos/${repo}/releases/latest`, 'application/vnd.github+json');
         return JSON.parse(body.toString('utf8')) as Release;
     }

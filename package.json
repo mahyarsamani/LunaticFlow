@@ -7,7 +7,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/mahyarsamani/Tab-Groups.git"
+    "url": "https://github.com/mahyarsamani/LunaticFlow.git"
   },
   "engines": {
     "vscode": "^1.85.0"
@@ -295,7 +295,7 @@
           },
           "lunaticflow.updateRepository": {
             "type": "string",
-            "default": "mahyarsamani/Tab-Groups",
+            "default": "mahyarsamani/LunaticFlow",
             "description": "The GitHub repository (owner/name) whose releases carry the LunaticFlow .vsix."
           }
         }
@@ -303,22 +303,22 @@
       {
         "title": "Tab Groups",
         "properties": {
-          "tabGroupsPro.showFileIcons": {
+          "lunaticflow.tabGroups.showFileIcons": {
             "type": "boolean",
             "default": true,
             "description": "Show file type icons in the groups panel."
           },
-          "tabGroupsPro.showFilePath": {
+          "lunaticflow.tabGroups.showFilePath": {
             "type": "boolean",
             "default": false,
             "description": "Show the workspace-relative path instead of just the file name."
           },
-          "tabGroupsPro.switchClosesOtherTabs": {
+          "lunaticflow.tabGroups.switchClosesOtherTabs": {
             "type": "boolean",
             "default": true,
             "description": "When switching to a group, close open tabs that are not in it. Tabs with unsaved changes and pinned tabs are always kept."
           },
-          "tabGroupsPro.showStatusBar": {
+          "lunaticflow.tabGroups.showStatusBar": {
             "type": "boolean",
             "default": true,
             "description": "Show the current tab group in the status bar."
@@ -328,17 +328,17 @@
       {
         "title": "Markdown Review",
         "properties": {
-          "mdReview.separator": {
+          "lunaticflow.markdownReview.separator": {
             "type": "string",
             "default": "; ",
             "description": "Text placed between several comments on the same line."
           },
-          "mdReview.includeQuote": {
+          "lunaticflow.markdownReview.includeQuote": {
             "type": "boolean",
             "default": false,
             "description": "Put the selected text in quotes before the comment when exporting (only for comments made on a text selection)."
           },
-          "mdReview.absolutePaths": {
+          "lunaticflow.markdownReview.absolutePaths": {
             "type": "boolean",
             "default": false,
             "description": "Export absolute file paths instead of workspace-relative ones."
