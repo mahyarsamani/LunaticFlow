@@ -177,7 +177,7 @@ export class TabGroupsProvider
         if (element instanceof TabGroupItem) {
             const group = this.storage.getGroup(element.groupId);
             if (!group) { return []; }
-            const config = vscode.workspace.getConfiguration('tabGroupsPro');
+            const config = vscode.workspace.getConfiguration('lunaticflow.tabGroups');
             const display: FileDisplayOptions = {
                 showFileIcons: config.get<boolean>('showFileIcons', true),
                 showFilePath: config.get<boolean>('showFilePath', false),

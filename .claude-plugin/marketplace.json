@@ -1,0 +1,11 @@
+{
+  "name": "lunaticflow",
+  "owner": { "name": "Mahyar Samani" },
+  "plugins": [
+    {
+      "name": "lunaticflow",
+      "source": "./claude-plugin",
+      "description": "Sprints reviewed in the LunaticFlow VS Code extension."
+    }
+  ]
+}

@@ -7,8 +7,17 @@ import {
 } from './tabGroupsProvider';
 import { TabGroupsStorage } from './tabGroupsStorage';
 import { activateReview } from './review';
+import { activateFlow } from './flow';
+import { activateUpdater } from './update';
 
 export function activate(context: vscode.ExtensionContext) {
+    activateUpdater(context);
+    try {
+        activateFlow(context);
+    } catch (e) {
+        // Keep tab groups and Markdown review working even if the Flow view fails to start.
+        vscode.window.showErrorMessage(`LunaticFlow: the Flow view failed to start: ${e instanceof Error ? e.message : e}`);
+    }
     const review = activateReview(context);
     const storage = new TabGroupsStorage(context);
     const provider = new TabGroupsProvider(storage, review.store);
@@ -38,7 +47,7 @@ export function activate(context: vscode.ExtensionContext) {
 
     function updateStatusBar() {
         const groups = storage.getAllGroups();
-        const show = vscode.workspace.getConfiguration('tabGroupsPro').get<boolean>('showStatusBar', true);
+        const show = vscode.workspace.getConfiguration('lunaticflow.tabGroups').get<boolean>('showStatusBar', true);
         if (!show || groups.length === 0) {
             statusBar.hide();
             return;
@@ -141,7 +150,7 @@ export function activate(context: vscode.ExtensionContext) {
             return;
         }
         await openFiles(group.files);
-        if (vscode.workspace.getConfiguration('tabGroupsPro').get<boolean>('switchClosesOtherTabs', true)) {
+        if (vscode.workspace.getConfiguration('lunaticflow.tabGroups').get<boolean>('switchClosesOtherTabs', true)) {
             const keep = new Set(group.files);
             const others = new Set([...openFilePaths()].filter(p => !keep.has(p)));
             const toClose = tabsFor(others, tab => !tab.isDirty && !tab.isPinned);
@@ -391,7 +400,7 @@ export function activate(context: vscode.ExtensionContext) {
         vscode.workspace.onDidDeleteFiles(() => provider.refresh()),
         vscode.workspace.onDidCreateFiles(() => provider.refresh()),
         vscode.workspace.onDidChangeConfiguration(e => {
-            if (e.affectsConfiguration('tabGroupsPro')) { refreshAll(); }
+            if (e.affectsConfiguration('lunaticflow.tabGroups')) { refreshAll(); }
         }),
     );
 

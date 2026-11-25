@@ -1,0 +1,51 @@
+# Builds the extension for every version tag (v0.2611.0 for a beta, v26.11.0 for a stable release)
+# and attaches the .vsix to a GitHub release. Installed copies of LunaticFlow check these releases
+# and offer a one-click update.
+# To release: `npm run release` (beta) or `npm run release -- --stable`, which set the next
+# calendar version, commit, tag, and push (scripts/release.js).
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: The tag matches package.json
+        run: |
+          version="$(node -p "require('./package.json').version")"
+          if [ "v$version" != "$GITHUB_REF_NAME" ]; then
+            echo "::error::tag $GITHUB_REF_NAME does not match package.json version $version"
+            exit 1
+          fi
+          echo "VERSION=$version" >> "$GITHUB_ENV"
+
+      - name: Install
+        run: npm install --no-audit --no-fund
+
+      - name: Test
+        run: |
+          git config --global user.email "ci@example.com"
+          git config --global user.name "ci"
+          npm test
+
+      - name: Package
+        run: npm run package
+
+      - name: Publish the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" "lunaticflow-$VERSION.vsix" \
+            --title "LunaticFlow $VERSION" --generate-notes
