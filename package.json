@@ -285,6 +285,11 @@
             "scope": "machine-overridable",
             "markdownDescription": "Base directory where agents make their own clones and write their files, one subdirectory per work package (for example `/scr/msamani/agents`, so `lf clone dx100` makes `/scr/msamani/agents/dx100/<repo>` on branch `agent/dx100`). Set it in your user or remote settings, and override it per workspace. `~`, `${userHome}` and `${env:NAME}` are expanded. Plans in the playground appear in the Flow view, and the `lf` CLI reads it from `~/.config/lunaticflow/config.json`, which LunaticFlow keeps up to date."
           },
+          "lunaticflow.review.advanceOnDecision": {
+            "type": "boolean",
+            "default": true,
+            "markdownDescription": "In a review diff, move on to the next change after **Approve** or **Reject**. **Comment** and **Undo** stay on the change, and deciding from the Flow view never opens a diff."
+          },
           "lunaticflow.agentRoots": {
             "type": "array",
             "items": { "type": "string" },

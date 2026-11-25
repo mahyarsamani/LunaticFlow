@@ -226,7 +226,8 @@ export class ReviewController implements vscode.Disposable {
             vscode.window.showInformationMessage(`Round ${t.round.n} of ${sprint} changes no files.`);
             return;
         }
-        const hunk = key ? file.hunks.find(h => h.key === key) : undefined;
+        // Without a named change, a file opens on its first change.
+        const hunk = (key ? file.hunks.find(h => h.key === key) : undefined) ?? file.hunks[0];
         const left = revUri({
             root, sprint, round: t.round.n, side: 'old', path: file.oldPath,
             rev: file.status === 'added' ? '' : t.round.base,
@@ -236,11 +237,13 @@ export class ReviewController implements vscode.Disposable {
             rev: file.status === 'deleted' ? '' : t.round.head,
         });
         const title = `${path.basename(file.path)} · ${sprint} round ${t.round.n}`;
-        const line = hunk ? hunkNewRange(hunk).start - 1 : 0;
+        const line = Math.max(hunk ? hunkNewRange(hunk).start - 1 : 0, 0);
         await vscode.commands.executeCommand('vscode.diff', left, right, title, {
             preview: false,
-            selection: new vscode.Range(Math.max(line, 0), 0, Math.max(line, 0), 0),
+            selection: new vscode.Range(line, 0, line, 0),
         });
+        // The selection alone may leave the change at the window's edge.
+        vscode.window.activeTextEditor?.revealRange(new vscode.Range(line, 0, line, 0), vscode.TextEditorRevealType.InCenter);
         void this.syncThreads();
     }
 
@@ -320,6 +323,13 @@ export class ReviewController implements vscode.Disposable {
             }
         });
         this.store.refresh();
+        // Approve and Reject move on to the next change, as a reviewer reading the diff expects;
+        // Undo stays, and so does deciding from the Flow view, which should not pull a diff open.
+        const advance = vscode.workspace.getConfiguration('lunaticflow').get<boolean>('review.advanceOnDecision', true);
+        const ref = vscode.window.activeTextEditor && parseRevUri(vscode.window.activeTextEditor.document.uri);
+        if (decision && advance && ref?.root === r.t.repo.root && ref.sprint === r.t.state.id) {
+            await this.navigate('next', { root: r.t.repo.root, sprint: r.t.state.id, path: r.file.path, key: r.hunk.key });
+        }
     }
 
     private async approveFile(a?: { root: string; sprint: string; path: string }): Promise<void> {
@@ -348,7 +358,7 @@ export class ReviewController implements vscode.Disposable {
         if (next) {
             const d = this.decisionsOf(next.round);
             const pending = next.files.find(f => f.hunks.some(h => !d[h.key]));
-            if (pending) { await this.open(root, sprint!, pending.path); }
+            if (pending) { await this.open(root, sprint!, pending.path, pending.hunks.find(h => !d[h.key])!.key); }
             else {
                 const go = await vscode.window.showInformationMessage(
                     `Every change in ${sprint} has a decision.`, 'Send Review');
@@ -506,13 +516,13 @@ export class ReviewController implements vscode.Disposable {
             `**Change ${p.change} of ${p.changes}** · File ${p.file} of ${p.files} · \`${path.basename(file.path)}\``,
             `${state} · ${left}`,
             [
-                link('$(arrow-up) Previous', 'lunaticflow.previousChange', 'Previous change'),
-                link('$(arrow-down) Next', 'lunaticflow.nextChange', 'Next change'),
+                link('$(arrow-circle-up) Previous', 'lunaticflow.previousChange', 'Previous change'),
+                link('$(arrow-circle-down) Next', 'lunaticflow.nextChange', 'Next change'),
                 ...(t.open ? [link('$(debug-step-over) Next undecided', 'lunaticflow.nextUndecided', 'Next change without a decision')] : []),
             ].join(' · '),
             [
-                link('$(arrow-left) Previous file', 'lunaticflow.previousFile', 'Previous changed file'),
-                link(`$(arrow-right) Next file${next ? `: ${path.basename(next.path)}` : ''}`, 'lunaticflow.nextFile', 'Next changed file'),
+                link('$(arrow-circle-left) Previous file', 'lunaticflow.previousFile', 'Previous changed file'),
+                link(`$(arrow-circle-right) Next file${next ? `: ${path.basename(next.path)}` : ''}`, 'lunaticflow.nextFile', 'Next changed file'),
             ].join(' · '),
         ];
         if (t.open) {
@@ -551,10 +561,11 @@ export class ReviewController implements vscode.Disposable {
                 : d?.decision === 'rejected' ? `$(error) rejected${d.reason ? `: ${d.reason}` : ''}`
                 : '$(circle-large-outline) undecided';
             lenses.push(new vscode.CodeLens(range, { title: `${status}  (+${h.added} −${h.removed})`, command: '' }));
-            // Navigation goes last on the row, and stays once the round is reviewed.
+            // Navigation goes last on the row, and stays once the round is reviewed. A lens can't be
+            // styled, so circled arrows with words make the widest, most button-like targets it allows.
             const nav = [
-                new vscode.CodeLens(range, { title: '$(arrow-up)', tooltip: 'Previous change', command: 'lunaticflow.previousChange', arguments: [arg] }),
-                new vscode.CodeLens(range, { title: '$(arrow-down)', tooltip: 'Next change', command: 'lunaticflow.nextChange', arguments: [arg] }),
+                new vscode.CodeLens(range, { title: '$(arrow-circle-up) Previous', tooltip: 'Previous change', command: 'lunaticflow.previousChange', arguments: [arg] }),
+                new vscode.CodeLens(range, { title: '$(arrow-circle-down) Next', tooltip: 'Next change', command: 'lunaticflow.nextChange', arguments: [arg] }),
                 new vscode.CodeLens(range, { title: `${i + 1}/${file.hunks.length}`, tooltip: `Change ${i + 1} of ${file.hunks.length} in this file`, command: '' }),
             ];
             if (!t.open) { lenses.push(...nav); return; }

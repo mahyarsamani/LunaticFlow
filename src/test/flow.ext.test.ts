@@ -166,7 +166,36 @@ async function main() {
     await vs.commands.executeCommand('lunaticflow.nextFile', approveArgs[0]);
     opened = vs.calls.executed.find(c => c.command === 'vscode.diff');
     assert.strictEqual(parseRevUri(opened!.args[1])!.path, 'src/new.c', 'next file from a link');
+
+    // A file opened without a named change opens on its first change.
+    vs.calls.executed.length = 0;
+    await vs.commands.executeCommand('lunaticflow.openRound', { root: repo, sprint: 's1', path: 'src/a.c' });
+    opened = vs.calls.executed.find(c => c.command === 'vscode.diff');
+    assert.strictEqual(opened!.args[3].selection.start.line, 4, 'opens on the first change');
+
+    // In a review diff, Approve and Reject move on to the next change; Undo stays.
+    const ed2 = vs.mock.editor(doc, 4);
+    await vs.commands.executeCommand('lunaticflow.approveHunk', approveArgs[0]);
+    assert.strictEqual(ed2.selection.active.line, 30, 'approve moves to the next change');
+    await vs.commands.executeCommand('lunaticflow.clearHunk', approveArgs[0]);
+    assert.strictEqual(ed2.selection.active.line, 30, 'undo stays');
+    ed2.selection = new vs.Selection(4, 0, 4, 0);
+    vs.answers.input = 'not this way';
+    await vs.commands.executeCommand('lunaticflow.rejectHunk', approveArgs[0]);
+    assert.strictEqual(ed2.selection.active.line, 30, 'reject moves to the next change');
+    await vs.commands.executeCommand('lunaticflow.clearHunk', approveArgs[0]);
+    vs.mock.setConfig('lunaticflow.review.advanceOnDecision', false);
+    ed2.selection = new vs.Selection(4, 0, 4, 0);
+    await vs.commands.executeCommand('lunaticflow.approveHunk', approveArgs[0]);
+    assert.strictEqual(ed2.selection.active.line, 4, 'the setting turns it off');
+    await vs.commands.executeCommand('lunaticflow.clearHunk', approveArgs[0]);
+    vs.mock.setConfig('lunaticflow.review.advanceOnDecision', true);
+    // Deciding without a review diff in front (the Flow view) opens nothing.
     vs.window.activeTextEditor = undefined;
+    vs.calls.executed.length = 0;
+    await vs.commands.executeCommand('lunaticflow.approveHunk', approveArgs[0]);
+    assert.ok(!vs.calls.executed.some(c => c.command === 'vscode.diff'), 'no diff opened from the Flow view');
+    await vs.commands.executeCommand('lunaticflow.clearHunk', approveArgs[0]);
 
     // Approve the first change, reject the drive-by with a reason.
     await vs.commands.executeCommand('lunaticflow.approveHunk', approveArgs[0]);

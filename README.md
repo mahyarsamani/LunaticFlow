@@ -29,7 +29,9 @@ LunaticFlow also keeps the two features it grew out of: tab groups and Markdown 
 ### Moving between changes
 
 A sprint reads as one run of changes: file by file in diff order, top to bottom in each file.
+A file opens on its first change.
 Next change on a file's last change opens the next file at its first change, and previous change goes back the same way.
+**Approve** and **Reject** in a review diff move on to the next change; **Comment** and **Undo** stay where you are (`lunaticflow.review.advanceOnDecision` turns the moving off).
 
 | | Mac | Windows and Linux | Also |
 |---|---|---|---|
@@ -40,7 +42,7 @@ Next change on a file's last change opens the next file at its first change, and
 | Next change without a decision | `⌥⌘J` | `Ctrl+Alt+J` | the bubble, the status bar |
 
 - **The bubble.** Hover over a change for where it sits (change 3 of 5, file 2 of 7), what is still undecided, and links to move on or to approve, reject or comment.
-- **The lens row** above each change ends with ↑ ↓ and the change's place in its file.
+- **The lens row** above each change ends with **Previous** and **Next** and the change's place in its file.
 - **The status bar** shows `Change 3/5 · File 2/7`; click it for the next change without a decision.
 - **The Flow view** selects the change you land on.
 
@@ -148,6 +150,7 @@ All commands are available via `Ctrl+Shift+P` → search "Tab Groups" or "Markdo
 | `lunaticflow.scanDepth` | `2` | Folder levels searched for `.lunaticflow/` plans |
 | `lunaticflow.notify` | `true` | Notify when a sprint is handed over for review |
 | `lunaticflow.reviewerName` | `"You"` | Your name on review comments |
+| `lunaticflow.review.advanceOnDecision` | `true` | Move on to the next change after Approve or Reject in a review diff |
 | `lunaticflow.checkForUpdates` | `true` | Check GitHub once a day for a newer release |
 | `lunaticflow.updateRepository` | `"mahyarsamani/LunaticFlow"` | Where the releases come from |
 | `diffEditor.codeLens` | `false` | VS Code's own setting; LunaticFlow offers to turn it on so Approve / Reject / Comment show above each change |
