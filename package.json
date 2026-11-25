@@ -2,7 +2,7 @@
   "name": "lunaticflow",
   "displayName": "LunaticFlow",
   "description": "Work with coding agents in sprints: plan them as a graph, review each sprint in the changed files (approve, reject, comment on lines), and see what changed since your review. Also: tab groups and Markdown review comments.",
-  "version": "0.2611.0",
+  "version": "0.2611.1",
   "publisher": "mahyarsamani",
   "license": "MIT",
   "repository": {
