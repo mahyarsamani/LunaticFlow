@@ -4,7 +4,7 @@
     {
       "label": "npm: compile",
       "type": "shell",
-      "command": "/tmp/node-v22.12.0-linux-x64/bin/npm run compile",
+      "command": "npm run compile",
       "options": {
         "cwd": "${workspaceFolder}"
       },
@@ -20,7 +20,7 @@
     {
       "label": "npm: watch",
       "type": "shell",
-      "command": "/tmp/node-v22.12.0-linux-x64/bin/npm run watch",
+      "command": "npm run watch",
       "options": {
         "cwd": "${workspaceFolder}"
       },
