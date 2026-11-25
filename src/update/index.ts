@@ -69,12 +69,29 @@ export function activateUpdater(context: vscode.ExtensionContext): void {
         if (pick) { await vscode.commands.executeCommand('workbench.action.reloadWindow'); }
     }
 
-    /** `manual`: the user asked, so say when there is nothing new and ignore "skip this version". */
+    /**
+     * `manual`: the user asked, so say when there is nothing new and ignore "skip this version".
+     * `busy` covers only the request: an unanswered notification from an earlier check (often
+     * hidden in the notification center) must not silence a later manual check.
+     */
     async function check(manual: boolean): Promise<void> {
-        if (busy) { return; }
+        if (busy) {
+            if (manual) { vscode.window.showInformationMessage('LunaticFlow is already checking for updates.'); }
+            return;
+        }
         busy = true;
+        let release: Release;
         try {
-            const release = await latest();
+            release = await latest();
+        } catch (e) {
+            if (manual) {
+                vscode.window.showErrorMessage(`LunaticFlow could not check for updates: ${e instanceof Error ? e.message : e}`);
+            }
+            return;
+        } finally {
+            busy = false;
+        }
+        try {
             await context.globalState.update(LAST_CHECK, Date.now());
             const newer = compareVersions(release.tag_name, current) > 0;
             if (!newer) {
@@ -89,11 +106,7 @@ export function activateUpdater(context: vscode.ExtensionContext): void {
             else if (pick === 'Release Notes') { await vscode.env.openExternal(vscode.Uri.parse(release.html_url)); }
             else if (pick === 'Skip This Version') { await context.globalState.update(SKIPPED, release.tag_name); }
         } catch (e) {
-            if (manual) {
-                vscode.window.showErrorMessage(`LunaticFlow could not check for updates: ${e instanceof Error ? e.message : e}`);
-            }
-        } finally {
-            busy = false;
+            vscode.window.showErrorMessage(`LunaticFlow could not update: ${e instanceof Error ? e.message : e}`);
         }
     }
 
