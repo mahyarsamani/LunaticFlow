@@ -6,6 +6,7 @@ import * as os from 'os';
 import * as path from 'path';
 import { diffArgs, hunkNewRange, mapLine, parseDiff } from '../flow/diff';
 import { Plan, SprintState, emptySprintState, readySprints, tally, timeline, topoOrder, validatePlan, verdictOf } from '../flow/model';
+import { NavFile, hunkAt, navigate, positionOf } from '../flow/navigate';
 
 // ── parseDiff on a real repository, and the same keys as the CLI ─────────────
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'lf-test-'));
@@ -104,5 +105,52 @@ assert.strictEqual(baseBars[1].end - baseBars[1].start, 2 * 3600_000);
 const merge = bars.find(b => b.sprint === 'merge')!;
 const dxEnd = bars.find(b => b.sprint === 'dx')!.end;
 assert.ok(merge.start >= dxEnd);
+
+// ── navigation between changes and files ──────────────────────────────────────
+{
+    // a.c: changes at 5-7 and 30 (a deletion-only change sits on one line); b.bin: a binary pseudo-hunk; c.c: one change.
+    const files: NavFile[] = [
+        { path: 'a.c', hunks: [{ key: 'a1', start: 5, end: 7 }, { key: 'a2', start: 30, end: 30 }] },
+        { path: 'b.bin', hunks: [{ key: 'b1', start: 1, end: 1 }] },
+        { path: 'c.c', hunks: [{ key: 'c1', start: 12, end: 14 }] },
+    ];
+    const none = () => false;
+    assert.deepStrictEqual(navigate(files, undefined, 'next', none), { file: 0, hunk: 0 }, 'next with no cursor: the first change');
+    assert.deepStrictEqual(navigate(files, undefined, 'previous', none), { file: 2, hunk: 0 }, 'previous with no cursor: the last change');
+    assert.deepStrictEqual(navigate(files, { file: 0, line: 1 }, 'next', none), { file: 0, hunk: 0 });
+    assert.deepStrictEqual(navigate(files, { file: 0, line: 5 }, 'next', none), { file: 0, hunk: 1 }, 'from a change: the next one');
+    assert.deepStrictEqual(navigate(files, { file: 0, line: 6 }, 'next', none), { file: 0, hunk: 1 }, 'from inside a change: the next one');
+    assert.deepStrictEqual(navigate(files, { file: 0, line: 30 }, 'next', none), { file: 1, hunk: 0 }, 'the last change goes on into the next file');
+    assert.deepStrictEqual(navigate(files, { file: 2, line: 12 }, 'next', none), { edge: 'end' });
+    assert.deepStrictEqual(navigate(files, { file: 2, line: 40 }, 'next', none), { edge: 'end' }, 'below the last change');
+    assert.deepStrictEqual(navigate(files, { file: 0, line: 30 }, 'previous', none), { file: 0, hunk: 0 });
+    assert.deepStrictEqual(navigate(files, { file: 0, line: 6 }, 'previous', none), { file: 0, hunk: 0 }, 'from inside a change: back to its first line');
+    assert.deepStrictEqual(navigate(files, { file: 1, line: 1 }, 'previous', none), { file: 0, hunk: 1 }, 'back into the previous file, at its last change');
+    assert.deepStrictEqual(navigate(files, { file: 0, line: 5 }, 'previous', none), { edge: 'start' });
+    assert.deepStrictEqual(navigate(files, { file: 0, line: 30 }, 'nextFile', none), { file: 1, hunk: 0 });
+    assert.deepStrictEqual(navigate(files, { file: 2, line: 12 }, 'nextFile', none), { edge: 'end' });
+    assert.deepStrictEqual(navigate(files, { file: 2, line: 12 }, 'previousFile', none), { file: 1, hunk: 0 }, 'a file starts at its first change');
+    assert.deepStrictEqual(navigate(files, { file: 0, line: 30 }, 'previousFile', none), { edge: 'start' });
+
+    // Next undecided skips decided changes, wraps to the top, and comes back to the cursor's own change last.
+    const done = new Set(['a2', 'b1']);
+    const decided = (k: string) => done.has(k);
+    assert.deepStrictEqual(navigate(files, { file: 0, line: 5 }, 'nextUndecided', decided), { file: 2, hunk: 0 });
+    assert.deepStrictEqual(navigate(files, { file: 2, line: 12 }, 'nextUndecided', decided), { file: 0, hunk: 0 }, 'wraps to the top');
+    done.add('a1');
+    assert.deepStrictEqual(navigate(files, { file: 2, line: 12 }, 'nextUndecided', decided), { file: 2, hunk: 0 }, 'the change under the cursor, last');
+    done.add('c1');
+    assert.deepStrictEqual(navigate(files, { file: 0, line: 1 }, 'nextUndecided', decided), { edge: 'none' });
+    assert.deepStrictEqual(navigate([], undefined, 'next', none), { edge: 'end' });
+
+    // Where the cursor is.
+    assert.strictEqual(hunkAt(files[0], 20), 1, 'between changes: the nearer one');
+    assert.strictEqual(hunkAt({ path: 'x', hunks: [] }, 1), -1);
+    done.clear();
+    done.add('a1');
+    assert.deepStrictEqual(positionOf(files, { file: 0, line: 31 }, decided),
+        { change: 2, changes: 2, file: 1, files: 3, undecidedInFile: 1, undecidedInRound: 3 });
+    assert.strictEqual(positionOf(files, { file: 5, line: 1 }, decided), undefined);
+}
 
 console.log('flow tests passed');

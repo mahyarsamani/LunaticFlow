@@ -88,7 +88,36 @@ export class FlowTreeProvider implements vscode.TreeDataProvider<Node> {
         }
     }
 
+    /** The hunk node for a change, for selecting it with `TreeView.reveal`. */
+    hunkNode(repo: FlowRepo, sprint: string, file: FileDiff, hunk: Hunk): Node {
+        return { kind: 'hunk', repo, sprint, file, hunk };
+    }
+
+    /** Parents along the path that `reveal` walks: hunk → file → sprint → repository. */
+    getParent(n: Node): Node | undefined {
+        switch (n.kind) {
+            case 'hunk': return { kind: 'file', repo: n.repo, sprint: n.sprint, file: n.file };
+            case 'file':
+            case 'threads': {
+                const sprint = n.repo.plan.sprints.find(s => s.id === n.sprint);
+                return sprint ? { kind: 'sprint', repo: n.repo, sprint } : undefined;
+            }
+            case 'thread': return { kind: 'threads', repo: n.repo, sprint: n.sprint };
+            case 'sprint':
+            case 'agents': return { kind: 'repo', repo: n.repo };
+            default: return undefined;
+        }
+    }
+
     getTreeItem(n: Node): vscode.TreeItem {
+        const it = this.item(n);
+        // Stable ids let `reveal` find a node built anew, and keep expansion across refreshes.
+        const id = nodeId(n);
+        if (id) { it.id = id; }
+        return it;
+    }
+
+    private item(n: Node): vscode.TreeItem {
         switch (n.kind) {
             case 'repo': {
                 const it = new vscode.TreeItem(n.repo.name, vscode.TreeItemCollapsibleState.Expanded);
@@ -242,6 +271,27 @@ function ago(iso: string): string {
     if (s < 5400) { return `${Math.round(s / 60)} min ago`; }
     if (s < 129600) { return `${Math.round(s / 3600)} h ago`; }
     return `${Math.round(s / 86400)} d ago`;
+}
+
+/**
+ * A node's tree id, for the nodes `reveal` walks and their siblings; agents keep VS Code's own
+ * handles. A hunk's key can repeat within a file (two identical edits), so its index is part of the id.
+ */
+function nodeId(n: Node): string | undefined {
+    switch (n.kind) {
+        case 'repo': return `repo:${n.repo.root}`;
+        case 'agents': return `agents:${n.repo.root}`;
+        case 'sprint': return `sprint:${n.repo.root}#${n.sprint.id}`;
+        case 'file': return `file:${n.repo.root}#${n.sprint}#${n.file.path}`;
+        case 'hunk': {
+            const i = n.file.hunks.indexOf(n.hunk);
+            const index = i >= 0 ? i : n.file.hunks.findIndex(h => h.key === n.hunk.key);
+            return `hunk:${n.repo.root}#${n.sprint}#${n.file.path}#${index}#${n.hunk.key}`;
+        }
+        case 'threads': return `threads:${n.repo.root}#${n.sprint}`;
+        case 'thread': return `thread:${n.repo.root}#${n.sprint}#${n.thread.id}`;
+        default: return undefined;
+    }
 }
 
 /** Convert a tree node into the argument the hunk and file commands take. */

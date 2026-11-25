@@ -109,6 +109,65 @@ async function main() {
     assert.ok(titles.filter((t: string) => t.includes('Approve')).length === 2, titles.join(' | '));
     const approveArgs = lenses.filter((l: any) => l.command.command === 'lunaticflow.approveHunk').map((l: any) => l.command.arguments[0]);
 
+    // Navigation. The round changes src/a.c at lines 5 and 31, then adds src/new.c.
+    assert.strictEqual(ref.path, 'src/a.c');
+    assert.ok(titles.includes('1/2') && titles.includes('2/2'), 'each change shows its place in the file');
+    assert.ok(lenses.some((l: any) => l.command.command === 'lunaticflow.nextChange'), 'lens arrows');
+    const ed = vs.mock.editor(doc, 0);
+    await vs.commands.executeCommand('lunaticflow.nextChange');
+    assert.strictEqual(ed.selection.active.line, 4, 'next change: the first change, on its first line');
+    await tick();
+    const pos = vs.calls.statusItems.find((s: any) => /Change/.test(s.text));
+    assert.ok(pos?.visible, 'the position shows in the status bar');
+    assert.match(pos.text, /Change 1\/2 · File 1\/2/);
+    assert.strictEqual(pos.command, 'lunaticflow.nextUndecided');
+    let revealed = vs.calls.revealed[vs.calls.revealed.length - 1];
+    assert.strictEqual(revealed.node.hunk.key, approveArgs[0].key, 'the Flow view selects the change');
+    assert.match(revealed.item.id, /^hunk:/);
+    assert.deepStrictEqual(revealed.opts, { select: true, focus: false, expand: true });
+    await vs.commands.executeCommand('lunaticflow.nextChange');
+    assert.strictEqual(ed.selection.active.line, 30);
+    await vs.commands.executeCommand('lunaticflow.previousChange');
+    assert.strictEqual(ed.selection.active.line, 4);
+
+    // The hover bubble over a change, and none between changes.
+    const bubble = await vs.mock.hover(doc, 4);
+    assert.ok(bubble, 'a bubble over the change');
+    assert.match(bubble.contents.value, /\*\*Change 1 of 2\*\* · File 1 of 2/);
+    assert.match(bubble.contents.value, /2 undecided in this file, 3 in the sprint/);
+    assert.match(bubble.contents.value, /Next file: new\.c/);
+    assert.match(bubble.contents.value, /command:lunaticflow\.approveHunk\?/);
+    assert.ok(bubble.contents.isTrusted.enabledCommands.includes('lunaticflow.nextChange'));
+    assert.strictEqual(await vs.mock.hover(doc, 15), undefined, 'no bubble between changes');
+
+    // From the last change of a file, next change opens the next file's diff.
+    vs.calls.executed.length = 0;
+    ed.selection = new vs.Selection(30, 0, 30, 0);
+    await vs.commands.executeCommand('lunaticflow.nextChange');
+    let opened = vs.calls.executed.find(c => c.command === 'vscode.diff');
+    assert.strictEqual(parseRevUri(opened!.args[1])!.path, 'src/new.c', 'on into the next file');
+    revealed = vs.calls.revealed[vs.calls.revealed.length - 1];
+    assert.strictEqual(revealed.node.file.path, 'src/new.c');
+
+    // Past the last change, it points back at what still has no decision.
+    const newUri = opened!.args[1];
+    const newDoc = { uri: newUri, lineCount: 2 };
+    vs.mock.editor(newDoc, 0);
+    await vs.commands.executeCommand('lunaticflow.nextChange');
+    assert.ok(vs.calls.info.some(m => /That was the last change; 3 changes have no decision yet/.test(m)));
+    vs.calls.executed.length = 0;
+    await vs.commands.executeCommand('lunaticflow.previousFile');
+    opened = vs.calls.executed.find(c => c.command === 'vscode.diff');
+    assert.strictEqual(parseRevUri(opened!.args[1])!.path, 'src/a.c', 'previous file');
+    // A lens or hover link moves from its own change, wherever the cursor is.
+    // (The stand-in doesn't switch editors when a diff opens, so show a.c again by hand.)
+    vs.mock.editor(doc, 30);
+    vs.calls.executed.length = 0;
+    await vs.commands.executeCommand('lunaticflow.nextFile', approveArgs[0]);
+    opened = vs.calls.executed.find(c => c.command === 'vscode.diff');
+    assert.strictEqual(parseRevUri(opened!.args[1])!.path, 'src/new.c', 'next file from a link');
+    vs.window.activeTextEditor = undefined;
+
     // Approve the first change, reject the drive-by with a reason.
     await vs.commands.executeCommand('lunaticflow.approveHunk', approveArgs[0]);
     vs.answers.input = 'out of scope';

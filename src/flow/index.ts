@@ -17,6 +17,12 @@ export function activateFlow(context: vscode.ExtensionContext) {
     const review = new ReviewController(context, store);
     const tree = new FlowTreeProvider(store, review);
     const view = vscode.window.createTreeView('lunaticflowView', { treeDataProvider: tree, showCollapseAll: true });
+    // Moving between changes selects the change in the Flow view, without taking focus from the diff.
+    context.subscriptions.push(review.onDidNavigate(e => {
+        if (!view.visible) { return; }
+        view.reveal(tree.hunkNode(e.repo, e.sprint, e.file, e.hunk), { select: true, focus: false, expand: true })
+            .then(undefined, () => { /* the sprint may have changed under us; selection is a nicety */ });
+    }));
 
     // ── Waiting-for-review badge, status bar and notifications ──────────────
     const status = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 101);

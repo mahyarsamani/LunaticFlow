@@ -12,11 +12,14 @@ export const calls = {
     openedExternal: [] as string[],
     commentThreads: [] as any[],
     trees: [] as any[],
+    revealed: [] as any[],
+    statusItems: [] as any[],
 };
 export const answers = { info: undefined as string | undefined, warn: undefined as string | undefined, input: '' as string | undefined };
 const commandMap = new Map<string, (...a: any[]) => any>();
 const contentProviders = new Map<string, any>();
 const codeLensProviders: any[] = [];
+const hoverProviders: any[] = [];
 const config: Record<string, any> = {};
 
 export class EventEmitter<T> {
@@ -58,9 +61,11 @@ export class ThemeIcon { static File = new ThemeIcon('file'); constructor(readon
 export class ThemeColor { constructor(readonly id: string) {} }
 export class MarkdownString {
     value = '';
-    constructor(v = '') { this.value = v; }
+    isTrusted?: any;
+    constructor(v = '', readonly supportThemeIcons = false) { this.value = v; }
     appendMarkdown(s: string) { this.value += s; return this; }
 }
+export class Hover { constructor(readonly contents: any, readonly range?: Range) {} }
 export class TreeItem {
     description?: string; iconPath?: any; contextValue?: string; tooltip?: any; command?: any; resourceUri?: any;
     constructor(readonly label: string, readonly collapsibleState?: number) {}
@@ -92,8 +97,22 @@ export const window = {
     activeTextEditor: undefined as any,
     visibleTextEditors: [] as any[],
     onDidChangeVisibleTextEditors: new EventEmitter<any>().event,
-    createTreeView: (id: string, o: any) => { const v = { id, ...o, badge: undefined, dispose() {} }; calls.trees.push(v); return v; },
-    createStatusBarItem: () => ({ text: '', show() {}, hide() {}, dispose() {} }),
+    onDidChangeActiveTextEditor: new EventEmitter<any>().event,
+    onDidChangeTextEditorSelection: new EventEmitter<any>().event,
+    createTreeView: (id: string, o: any) => {
+        const v = {
+            id, ...o, badge: undefined, visible: true, dispose() {},
+            reveal: async (n: any, opts: any) => { calls.revealed.push({ id, node: n, item: o.treeDataProvider.getTreeItem(n), opts }); },
+        };
+        calls.trees.push(v);
+        return v;
+    },
+    createStatusBarItem: () => {
+        const s = { text: '', tooltip: undefined as any, command: undefined as any, visible: false,
+            show() { this.visible = true; }, hide() { this.visible = false; }, dispose() {} };
+        calls.statusItems.push(s);
+        return s;
+    },
     createTextEditorDecorationType: () => ({ dispose() {} }),
     showInformationMessage: async (m: string) => { calls.info.push(m); return answers.info; },
     showWarningMessage: async (m: string) => { calls.warn.push(m); return answers.warn; },
@@ -104,6 +123,7 @@ export const window = {
 };
 export const languages = {
     registerCodeLensProvider: (_sel: any, p: any) => { codeLensProviders.push(p); return new Disposable(); },
+    registerHoverProvider: (_sel: any, p: any) => { hoverProviders.push(p); return new Disposable(); },
 };
 export const comments = {
     createCommentController: (id: string, label: string) => ({
@@ -136,5 +156,12 @@ export const mock = {
     command: (id: string) => commandMap.get(id),
     content: (uri: Uri) => contentProviders.get(uri.scheme)?.provideTextDocumentContent(uri),
     codeLenses: (doc: any) => Promise.all(codeLensProviders.map(p => p.provideCodeLenses(doc))).then(x => x.flat()),
+    hover: (doc: any, line: number) => Promise.all(hoverProviders.map(p => p.provideHover(doc, new Position(line, 0)))).then(x => x.find(h => h)),
+    /** An editor showing `doc` with the cursor on a 0-based line, made the active editor. */
+    editor: (doc: any, line: number) => {
+        const ed: any = { document: doc, selection: new Selection(line, 0, line, 0), revealRange() {} };
+        window.activeTextEditor = ed;
+        return ed;
+    },
     setConfig: (k: string, v: any) => { config[k] = v; },
 };

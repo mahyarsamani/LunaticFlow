@@ -21,9 +21,31 @@ LunaticFlow also keeps the two features it grew out of: tab groups and Markdown 
    Above each change are **Approve**, **Reject** and **Comment**; the gutter **+** comments on any line.
    **Approve File** (editor title) approves the rest of a file and moves to the next.
    **Send Review** sends everything at once.
+   To move through the sprint, see [Moving between changes](#moving-between-changes).
 4. **Revise.** The agent's `lf revert-rejected` undoes rejected changes exactly; it answers each thread with `lf reply` and submits round 2.
    Round 2 shows only what changed since round 1, with your comments carried to their new lines and the agent's replies in the threads.
    Resolve the threads you are happy with, and approve or comment again.
+
+### Moving between changes
+
+A sprint reads as one run of changes: file by file in diff order, top to bottom in each file.
+Next change on a file's last change opens the next file at its first change, and previous change goes back the same way.
+
+| | Mac | Windows and Linux | Also |
+|---|---|---|---|
+| Next change | `⌥⌘]` | `Ctrl+Alt+]` | ↓ in the editor title, the lens row, the bubble |
+| Previous change | `⌥⌘[` | `Ctrl+Alt+[` | ↑ in the editor title, the lens row, the bubble |
+| Next changed file | `⇧⌥⌘]` | `Ctrl+Shift+Alt+]` | → in the editor title, the bubble |
+| Previous changed file | `⇧⌥⌘[` | `Ctrl+Shift+Alt+[` | ← in the editor title, the bubble |
+| Next change without a decision | `⌥⌘J` | `Ctrl+Alt+J` | the bubble, the status bar |
+
+- **The bubble.** Hover over a change for where it sits (change 3 of 5, file 2 of 7), what is still undecided, and links to move on or to approve, reject or comment.
+- **The lens row** above each change ends with ↑ ↓ and the change's place in its file.
+- **The status bar** shows `Change 3/5 · File 2/7`; click it for the next change without a decision.
+- **The Flow view** selects the change you land on.
+
+Past the last change, LunaticFlow offers to go back to the first change that still has no decision, or, when every change has one, to send the review.
+The keys work only in LunaticFlow review diffs; there `⌥⌘[` and `⌥⌘]` take the place of VS Code's fold and unfold.
 
 ### The Flow view
 

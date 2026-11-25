@@ -1,8 +1,10 @@
 // Reviewing a sprint round in VS Code's diff editor: approve or reject each hunk,
-// comment on lines with native comment threads, and send the review to the agent.
+// comment on lines with native comment threads, move between changes and files, and send
+// the review to the agent.
 import * as vscode from 'vscode';
 import * as path from 'path';
 import { FileDiff, Hunk, hunkNewRange, mapLine } from './diff';
+import { NavFile, NavFrom, NavMove, hunkAt, isSpot, navigate, positionOf } from './navigate';
 import { FlowRepo, FlowStore, git } from './store';
 import {
     AgentRecord, HunkDecision, Round, SprintState, Thread, currentRound, readySprints, tally, verdictOf,
@@ -52,10 +54,27 @@ interface Target {
 
 const NAME_AGENT = 'Claude';
 
+/** The navigation commands and the move each one makes. */
+const NAV_COMMANDS: Record<string, NavMove> = {
+    'lunaticflow.nextChange': 'next',
+    'lunaticflow.previousChange': 'previous',
+    'lunaticflow.nextFile': 'nextFile',
+    'lunaticflow.previousFile': 'previousFile',
+    'lunaticflow.nextUndecided': 'nextUndecided',
+};
+
+/** A hunk the reviewer moved to, for the Flow view to select. */
+export interface NavigatedTo { repo: FlowRepo; sprint: string; file: FileDiff; hunk: Hunk }
+
 export class ReviewController implements vscode.Disposable {
     private readonly disposables: vscode.Disposable[] = [];
     private readonly comments: vscode.CommentController;
     private readonly lensEmitter = new vscode.EventEmitter<void>();
+    private readonly navEmitter = new vscode.EventEmitter<NavigatedTo>();
+    /** Fires when navigation lands on a hunk, so the Flow view can select it. */
+    readonly onDidNavigate = this.navEmitter.event;
+    /** "Change 3/5 · File 2/7" while a review diff has focus. */
+    private readonly position = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 100);
     /** Our comment threads, keyed by document URI and thread id. */
     private readonly threads = new Map<string, vscode.CommentThread>();
     private readonly threadIds = new WeakMap<vscode.CommentThread, { root: string; sprint: string; id: string }>();
@@ -96,7 +115,8 @@ export class ReviewController implements vscode.Disposable {
         };
 
         this.disposables.push(
-            this.comments, this.lensEmitter, this.decoApproved, this.decoRejected, this.decoUndecided,
+            this.comments, this.lensEmitter, this.navEmitter, this.position,
+            this.decoApproved, this.decoRejected, this.decoUndecided,
             vscode.workspace.registerTextDocumentContentProvider(SCHEME, {
                 provideTextDocumentContent: async (uri: vscode.Uri) => {
                     const ref = parseRevUri(uri);
@@ -108,8 +128,17 @@ export class ReviewController implements vscode.Disposable {
                 onDidChangeCodeLenses: this.lensEmitter.event,
                 provideCodeLenses: doc => this.codeLenses(doc),
             }),
-            store.onDidChange(() => this.refreshEditors()),
+            vscode.languages.registerHoverProvider({ scheme: SCHEME }, {
+                provideHover: (doc, pos) => this.hover(doc, pos),
+            }),
+            store.onDidChange(() => { this.refreshEditors(); void this.updatePosition(); }),
             vscode.window.onDidChangeVisibleTextEditors(() => this.refreshEditors()),
+            vscode.window.onDidChangeActiveTextEditor(() => void this.updatePosition()),
+            vscode.window.onDidChangeTextEditorSelection(e => {
+                if (e.textEditor === vscode.window.activeTextEditor) { void this.updatePosition(); }
+            }),
+            ...Object.entries(NAV_COMMANDS).map(([id, move]) =>
+                vscode.commands.registerCommand(id, (a?: HunkArg) => this.navigate(move, a))),
             vscode.workspace.onDidOpenTextDocument(doc => {
                 if (doc.uri.scheme === SCHEME) { void this.syncThreads(); }
             }),
@@ -328,6 +357,179 @@ export class ReviewController implements vscode.Disposable {
         }
     }
 
+    // ── navigation ──────────────────────────────────────────────────────────
+
+    private navFiles(t: Target): NavFile[] {
+        return t.files.map(f => ({ path: f.path, hunks: f.hunks.map(h => ({ key: h.key, ...hunkNewRange(h) })) }));
+    }
+
+    /** The round's file a review document shows; the old side names the file by its old path. */
+    private fileIndex(t: Target, ref: RevRef): number {
+        return t.files.findIndex(f => (ref.side === 'old' ? f.oldPath : f.path) === ref.path);
+    }
+
+    /** The cursor's line on the new side (1-based); a cursor on the old side is carried across the hunks. */
+    private cursorLine(ed: vscode.TextEditor, ref: RevRef, file: FileDiff): number {
+        const line = ed.selection.active.line + 1;
+        return ref.side === 'new' ? line : mapLine(line, file.hunks);
+    }
+
+    /** Where a move starts: the hunk an argument names (a lens or hover link), else the cursor in the review diff. */
+    private async navOrigin(a?: HunkArg): Promise<{ t: Target; files: NavFile[]; from?: NavFrom } | undefined> {
+        if (a?.root) {
+            const t = await this.target(a.root, a.sprint);
+            if (!t) { return undefined; }
+            const files = this.navFiles(t);
+            const file = files.findIndex(f => f.path === a.path);
+            const h = file >= 0 ? files[file].hunks.find(x => x.key === a.key) : undefined;
+            return { t, files, from: h ? { file, line: h.start } : undefined };
+        }
+        const ed = vscode.window.activeTextEditor;
+        const ref = ed && parseRevUri(ed.document.uri);
+        if (!ed || !ref) { return undefined; }
+        const t = await this.target(ref.root, ref.sprint);
+        if (!t) { return undefined; }
+        const files = this.navFiles(t);
+        // A diff of an earlier round: its lines mean nothing in this round, so start from the top.
+        const file = t.round.n === ref.round ? this.fileIndex(t, ref) : -1;
+        return { t, files, from: file >= 0 ? { file, line: this.cursorLine(ed, ref, t.files[file]) } : undefined };
+    }
+
+    private async navigate(move: NavMove, a?: HunkArg): Promise<void> {
+        const o = await this.navOrigin(a);
+        if (!o) {
+            vscode.window.showWarningMessage('Open a LunaticFlow review diff first.');
+            return;
+        }
+        const { t, files } = o;
+        const decided = (k: string) => !!this.decisionsOf(t.round)[k];
+        const r = navigate(files, o.from, move, decided);
+        if (isSpot(r)) {
+            await this.goTo(t, r.file, r.hunk);
+            return;
+        }
+        const sprint = t.state.id;
+        if (r.edge === 'start') {
+            vscode.window.showInformationMessage(move === 'previousFile' ? 'This is the first changed file.' : 'This is the first change.');
+            return;
+        }
+        if (!t.open) {
+            vscode.window.showInformationMessage(r.edge === 'none'
+                ? `Round ${t.round.n} of ${sprint} is already reviewed.`
+                : `That was the last ${move === 'nextFile' ? 'file' : 'change'}.`);
+            return;
+        }
+        // Past the end, or nothing left: point at what still needs a decision, or offer to send.
+        const left = navigate(files, undefined, 'nextUndecided', decided);
+        if (isSpot(left)) {
+            const n = files.reduce((k, f) => k + f.hunks.filter(h => !decided(h.key)).length, 0);
+            const pick = await vscode.window.showInformationMessage(
+                `That was the last ${move === 'nextFile' ? 'file' : 'change'}; ${n} change${n === 1 ? ' has' : 's have'} no decision yet.`,
+                'Go to First Undecided');
+            if (pick) { await this.goTo(t, left.file, left.hunk); }
+            return;
+        }
+        const pick = await vscode.window.showInformationMessage(`Every change in ${sprint} has a decision.`, 'Send Review');
+        if (pick) { await this.submit({ root: t.repo.root, sprint }); }
+    }
+
+    /** Put the cursor on a hunk's first line, centred, opening its file's diff if another one is showing. */
+    private async goTo(t: Target, fileIndex: number, hunkIndex: number): Promise<void> {
+        const file = t.files[fileIndex];
+        const hunk = file.hunks[hunkIndex];
+        const line = Math.max(hunkNewRange(hunk).start - 1, 0);
+        const pos = new vscode.Position(line, 0);
+        const ed = vscode.window.activeTextEditor;
+        const ref = ed && parseRevUri(ed.document.uri);
+        const showing = ref && ref.side === 'new' && ref.root === t.repo.root && ref.sprint === t.state.id
+            && ref.round === t.round.n && ref.path === file.path;
+        if (ed && showing) {
+            ed.selection = new vscode.Selection(pos, pos);
+        } else {
+            await this.open(t.repo.root, t.state.id, file.path, hunk.key);
+        }
+        vscode.window.activeTextEditor?.revealRange(new vscode.Range(pos, pos), vscode.TextEditorRevealType.InCenter);
+        this.navEmitter.fire({ repo: t.repo, sprint: t.state.id, file, hunk });
+        void this.updatePosition();
+    }
+
+    /** Keep the status bar's "Change 3/5 · File 2/7" in step with the cursor. */
+    private positionSeq = 0;
+    private async updatePosition(): Promise<void> {
+        const seq = ++this.positionSeq;
+        const ed = vscode.window.activeTextEditor;
+        const ref = ed && parseRevUri(ed.document.uri);
+        const t = ref ? await this.target(ref.root, ref.sprint) : undefined;
+        if (seq !== this.positionSeq) { return; }  // the cursor moved again meanwhile
+        const file = t && ref && t.round.n === ref.round ? this.fileIndex(t, ref) : -1;
+        if (!ed || !ref || !t || file < 0) { this.position.hide(); return; }
+        const decided = (k: string) => !!this.decisionsOf(t.round)[k];
+        const p = positionOf(this.navFiles(t), { file, line: this.cursorLine(ed, ref, t.files[file]) }, decided);
+        if (!p) { this.position.hide(); return; }
+        this.position.text = `$(diff) Change ${p.change}/${p.changes} · File ${p.file}/${p.files}`;
+        if (t.open && p.undecidedInRound) {
+            this.position.tooltip = `${p.undecidedInRound} change${p.undecidedInRound === 1 ? '' : 's'} in ${ref.sprint} without a decision. Click for the next one.`;
+            this.position.command = 'lunaticflow.nextUndecided';
+        } else {
+            this.position.tooltip = t.open ? `Every change in ${ref.sprint} has a decision.` : `Round ${t.round.n} of ${ref.sprint}, reviewed.`;
+            this.position.command = 'lunaticflow.nextChange';
+        }
+        this.position.show();
+    }
+
+    /** The bubble over a change: where it is in the sprint, links to move on, and the decisions. */
+    private async hover(doc: vscode.TextDocument, pos: vscode.Position): Promise<vscode.Hover | undefined> {
+        const ref = parseRevUri(doc.uri);
+        if (!ref || ref.side !== 'new') { return undefined; }
+        const t = await this.target(ref.root, ref.sprint);
+        if (!t || t.round.n !== ref.round) { return undefined; }
+        const files = this.navFiles(t);
+        const fi = this.fileIndex(t, ref);
+        const line = pos.line + 1;
+        const hi = fi < 0 ? -1 : files[fi].hunks.findIndex(h => line >= h.start && line <= h.end);
+        if (hi < 0) { return undefined; }
+        const decisions = this.decisionsOf(t.round);
+        const p = positionOf(files, { file: fi, line }, k => !!decisions[k])!;
+        const file = t.files[fi];
+        const hunk = file.hunks[hi];
+        const arg: HunkArg = { root: ref.root, sprint: ref.sprint, path: file.path, key: hunk.key };
+        const link = (label: string, command: string, tip: string) =>
+            `[${label}](command:${command}?${encodeURIComponent(JSON.stringify([arg]))} "${tip}")`;
+        const d = decisions[hunk.key];
+        const state = d?.decision === 'approved' ? '$(pass-filled) approved'
+            : d?.decision === 'rejected' ? '$(error) rejected' : '$(circle-large-outline) undecided';
+        const left = !t.open ? `round ${t.round.n} is reviewed`
+            : p.undecidedInRound ? `${p.undecidedInFile} undecided in this file, ${p.undecidedInRound} in the sprint`
+            : 'every change has a decision';
+        const next = t.files[fi + 1];
+        const rows = [
+            `**Change ${p.change} of ${p.changes}** · File ${p.file} of ${p.files} · \`${path.basename(file.path)}\``,
+            `${state} · ${left}`,
+            [
+                link('$(arrow-up) Previous', 'lunaticflow.previousChange', 'Previous change'),
+                link('$(arrow-down) Next', 'lunaticflow.nextChange', 'Next change'),
+                ...(t.open ? [link('$(debug-step-over) Next undecided', 'lunaticflow.nextUndecided', 'Next change without a decision')] : []),
+            ].join(' · '),
+            [
+                link('$(arrow-left) Previous file', 'lunaticflow.previousFile', 'Previous changed file'),
+                link(`$(arrow-right) Next file${next ? `: ${path.basename(next.path)}` : ''}`, 'lunaticflow.nextFile', 'Next changed file'),
+            ].join(' · '),
+        ];
+        if (t.open) {
+            rows.push('---', [
+                link('$(check) Approve', 'lunaticflow.approveHunk', 'Approve this change'),
+                link('$(close) Reject', 'lunaticflow.rejectHunk', 'Reject this change'),
+                link('$(comment) Comment', 'lunaticflow.commentHunk', 'Comment on this change'),
+            ].join(' · '));
+        }
+        const md = new vscode.MarkdownString(rows.join('\n\n'), true);
+        md.isTrusted = {
+            enabledCommands: [...Object.keys(NAV_COMMANDS), 'lunaticflow.approveHunk', 'lunaticflow.rejectHunk', 'lunaticflow.commentHunk'],
+        };
+        const h = files[fi].hunks[hi];
+        return new vscode.Hover(md, new vscode.Range(h.start - 1, 0, h.end - 1, 0));
+    }
+
     // ── CodeLens and decorations ────────────────────────────────────────────
 
     private async codeLenses(doc: vscode.TextDocument): Promise<vscode.CodeLens[]> {
@@ -339,7 +541,7 @@ export class ReviewController implements vscode.Disposable {
         if (!file) { return []; }
         const decisions = this.decisionsOf(t.round);
         const lenses: vscode.CodeLens[] = [];
-        for (const h of file.hunks) {
+        file.hunks.forEach((h, i) => {
             const r = hunkNewRange(h);
             const line = Math.min(Math.max(r.start - 1, 0), Math.max(doc.lineCount - 1, 0));
             const range = new vscode.Range(line, 0, line, 0);
@@ -349,7 +551,13 @@ export class ReviewController implements vscode.Disposable {
                 : d?.decision === 'rejected' ? `$(error) rejected${d.reason ? `: ${d.reason}` : ''}`
                 : '$(circle-large-outline) undecided';
             lenses.push(new vscode.CodeLens(range, { title: `${status}  (+${h.added} −${h.removed})`, command: '' }));
-            if (!t.open) { continue; }
+            // Navigation goes last on the row, and stays once the round is reviewed.
+            const nav = [
+                new vscode.CodeLens(range, { title: '$(arrow-up)', tooltip: 'Previous change', command: 'lunaticflow.previousChange', arguments: [arg] }),
+                new vscode.CodeLens(range, { title: '$(arrow-down)', tooltip: 'Next change', command: 'lunaticflow.nextChange', arguments: [arg] }),
+                new vscode.CodeLens(range, { title: `${i + 1}/${file.hunks.length}`, tooltip: `Change ${i + 1} of ${file.hunks.length} in this file`, command: '' }),
+            ];
+            if (!t.open) { lenses.push(...nav); return; }
             if (d?.decision !== 'approved') {
                 lenses.push(new vscode.CodeLens(range, { title: '$(check) Approve', command: 'lunaticflow.approveHunk', arguments: [arg] }));
             }
@@ -360,7 +568,8 @@ export class ReviewController implements vscode.Disposable {
             if (d) {
                 lenses.push(new vscode.CodeLens(range, { title: '$(discard) Undo', command: 'lunaticflow.clearHunk', arguments: [arg] }));
             }
-        }
+            lenses.push(...nav);
+        });
         return lenses;
     }
 
